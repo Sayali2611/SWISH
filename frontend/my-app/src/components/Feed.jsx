@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Feed.css";
+// import NotificationBell from "../components/NotificationBell"; 
+import { getSocket } from "../components/NotificationBell";
+import Toast from "../components/Toast"; 
+import "../styles/Notifications.css"; 
 
 function Feed() {
   const [posts, setPosts] = useState([]);
@@ -10,8 +14,14 @@ function Feed() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [commentTexts, setCommentTexts] = useState({});
-  const [commentLoading, setCommentLoading] = useState({});
+  // ✅ FIX APPLIED: Changed to useState({}) to fix the crash
+  const [commentLoading, setCommentLoading] = useState({}); 
   const [activeCommentSection, setActiveCommentSection] = useState(null);
+  
+  const [notifCount, setNotifCount] = useState(0); 
+  const [showNotifications, setShowNotifications] = useState(false); 
+  const [toastData, setToastData] = useState(null); 
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,7 +36,46 @@ function Feed() {
     const userObj = JSON.parse(userData);
     setUser(userObj);
     fetchPosts();
-  }, [navigate]);
+
+    // --- SOCKET/NOTIFICATION LOGIC STARTS HERE ---
+    const socket = getSocket();
+    if (socket) {
+      // Listen for real-time new notifications
+      socket.on("new_notification", (payload) => { 
+        setNotifCount(c => c + 1);
+
+        // Show toast popup
+        setToastData({
+          userName: payload.userName || "New Activity",
+          message: payload.message || "You have a new notification.",
+          userImage: payload.userImage,
+          timeAgo: "just now"
+        });
+      });
+
+      // Fetch initial unread count
+      const fetchInitialCount = async () => {
+        try {
+          const response = await fetch("http://localhost:5000/api/notifications/unread/count", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+          setNotifCount(data.count || 0);
+        } catch (error) {
+          console.error("Failed to fetch initial notification count:", error);
+        }
+      };
+      fetchInitialCount();
+    }
+
+    return () => {
+      if (socket) {
+        socket.off("new_notification");
+      }
+    };
+    // --- SOCKET/NOTIFICATION LOGIC ENDS HERE ---
+
+  }, [navigate]); 
 
   const fetchPosts = async () => {
     try {
@@ -78,7 +127,6 @@ function Feed() {
       if (response.ok) {
         setNewPost("");
         setSuccess('Post created successfully!');
-        // Add new post to the beginning of the posts array
         setPosts(prevPosts => [data, ...prevPosts]);
         setTimeout(() => setSuccess(""), 3000);
       } else {
@@ -106,7 +154,6 @@ function Feed() {
 
       if (response.ok) {
         const updatedPost = await response.json();
-        // Update the specific post in the posts array
         setPosts(prevPosts => 
           prevPosts.map(post => 
             post._id === postId ? updatedPost : post
@@ -141,7 +188,6 @@ function Feed() {
 
       if (response.ok) {
         setCommentTexts(prev => ({ ...prev, [postId]: "" }));
-        // Update the specific post with new comments
         setPosts(prevPosts => 
           prevPosts.map(post => 
             post._id === postId ? data.post : post
@@ -193,6 +239,30 @@ function Feed() {
     setActiveCommentSection(activeCommentSection === postId ? null : postId);
   };
 
+  // 🔥 FIX: This function now marks as read, resets badge, and NAVIGATES to the full page.
+  const handleClickNotification = async () => {
+    const token = localStorage.getItem("token");
+
+    setToastData(null); // Hide toast when clicking the bell
+
+    // Mark notifications as read BEFORE navigation
+    if (notifCount > 0) {
+      try {
+        await fetch("http://localhost:5000/api/notifications/read-all", {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.error("Failed to mark as read:", err);
+      }
+    }
+
+    setNotifCount(0); // Reset the badge count
+
+    // Navigate to full notification page
+    navigate("/notifications");
+  };
+
   if (!user) {
     return (
       <div className="loading-container">
@@ -212,6 +282,16 @@ function Feed() {
             <button className="nav-btn" onClick={() => navigate("/profile")}>👤 Profile</button>
             <button className="nav-btn">👥 Network</button>
             <button className="nav-btn">🔍 Explore</button>
+            
+            {/* ✅ This is the single, combined Notifications button, now pointing to /notifications */}
+            <button 
+              className={`nav-btn notification-bell-btn ${showNotifications ? 'active-bell' : ''}`}
+              onClick={handleClickNotification} 
+              title="Notifications"
+            >
+              🔔Notifications
+              {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+            </button>
           </div>
         </div>
         <div className="header-right">
@@ -225,6 +305,7 @@ function Feed() {
               {getUserAvatar(user)}
             </div>
           </div>
+          {/* The redundant notification icon/button is now removed from here */}
           <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
         </div>
       </header>
@@ -242,6 +323,30 @@ function Feed() {
           <button onClick={() => setSuccess("")}>×</button>
         </div>
       )}
+
+      {/* Conditional Notification Panel/Modal - Now only opens via the Toast click */}
+      {showNotifications && (
+        <div className="notification-panel-overlay" onClick={() => setShowNotifications(false)}>
+          <div className="notification-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-header">
+              <h3>Notifications</h3>
+              <button onClick={() => setShowNotifications(false)} className="close-panel-btn">×</button>
+            </div>
+            <div className="panel-content">
+              <p className="empty-message">You have no new notifications to display (Placeholder).</p>
+              <p>The badge has been reset. You can now fetch your notification list here.</p>
+              <button 
+                onClick={() => { setShowNotifications(false); navigate("/notifications"); }}
+                className="view-all-notifs-btn"
+              >
+                View Full Notification Page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* END NEW NOTIFICATION PANEL */}
+
 
       <div className="feed-content">
         <div className="main-feed">
@@ -501,6 +606,18 @@ function Feed() {
           </div>
         </div>
       </div>
+      
+      {/* Toast Component */}
+      <Toast
+        notification={toastData}
+        onClose={() => setToastData(null)}
+        // onOpen logic: clears toast, resets badge, and shows the mini-panel
+        onOpen={() => {
+          setToastData(null); 
+          setNotifCount(0);  
+          setShowNotifications(true); 
+        }}
+      />
     </div>
   );
 }

@@ -254,6 +254,7 @@ function Profile() {
             <button className="nav-btn active">👤 Profile</button>
             <button className="nav-btn">👥 Network</button>
             <button className="nav-btn">🔍 Explore</button>
+            <button className="nav-btn">🔔Notifications</button>
           </div>
         </div>
         <div className="header-right">
