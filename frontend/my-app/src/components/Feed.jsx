@@ -312,7 +312,8 @@ function Feed() {
           <div className="nav-items">
             <button className="nav-btn active">🏠 Feed</button>
             <button className="nav-btn" onClick={() => navigate("/profile")}>👤 Profile</button>
-            <button className="nav-btn">👥 Network</button>
+            <button className="nav-btn" onClick={() => navigate("/network")}>👥 Network</button>
+            
             <button className="nav-btn">🔍 Explore</button>
             
             {/* Her notification button */}

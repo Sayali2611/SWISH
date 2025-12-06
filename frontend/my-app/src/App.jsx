@@ -3,8 +3,11 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Feed from "./components/Feed";
 import Profile from "./components/Profile";
-import NotificationsPage from "./components/Notifications"; // Her component
-import AdminDashboard from "./components/AdminDashboard"; // Your component
+import NotificationsPage from "./components/Notifications";
+import AdminDashboard from "./components/AdminDashboard";
+import Network from "./components/Network";
+import IncomingRequests from "./components/IncomingRequests";  // FIXED
+import Connections from "./components/Connections";            // FIXED
 import "./styles/global.css";
 
 function App() {
@@ -16,8 +19,11 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/feed" element={<Feed />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/notifications" element={<NotificationsPage />} /> {/* Her route */}
-        <Route path="/admin" element={<AdminDashboard />} /> {/* Your route */}
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/network" element={<Network />} />
+        <Route path="/requests" element={<IncomingRequests />} />   {/* FIXED */}
+        <Route path="/connections" element={<Connections />} />     {/* FIXED */}
       </Routes>
     </Router>
   );

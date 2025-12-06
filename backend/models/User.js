@@ -85,7 +85,7 @@ const UserSchema = new mongoose.Schema({
     type: String
   },
   
-  // Social
+  // Social - Basic Following System
   followers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -94,6 +94,39 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  
+  // NEW: Network Connection System (Like LinkedIn)
+  // Updated field names as requested
+  sentRequests: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  receivedRequests: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  connections: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  
+  // Admin Warnings
+  warnings: [{
+    reason: String,
+    issuedBy: String,
+    issuedAt: {
+      type: Date,
+      default: Date.now
+    },
+    isAcknowledged: {
+      type: Boolean,
+      default: false
+    }
+  }],
+  warningCount: {
+    type: Number,
+    default: 0
+  },
   
   // Timestamps
   createdAt: {
@@ -109,6 +142,111 @@ const UserSchema = new mongoose.Schema({
 // Compare password method (optional - can also use bcrypt.compare directly)
 UserSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Virtual for full name (optional)
+UserSchema.virtual('fullName').get(function() {
+  return `${this.name}`;
+});
+
+// Pre-save middleware to update updatedAt
+UserSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+// Instance method to add a connection
+UserSchema.methods.addConnection = function(userId) {
+  if (!this.connections.includes(userId)) {
+    this.connections.push(userId);
+  }
+  return this.save();
+};
+
+// Instance method to remove a connection
+UserSchema.methods.removeConnection = function(userId) {
+  const index = this.connections.indexOf(userId);
+  if (index > -1) {
+    this.connections.splice(index, 1);
+  }
+  return this.save();
+};
+
+// Instance method to send connection request
+UserSchema.methods.sendRequest = function(userId) {
+  if (!this.sentRequests.includes(userId)) {
+    this.sentRequests.push(userId);
+  }
+  return this.save();
+};
+
+// Instance method to receive connection request
+UserSchema.methods.receiveRequest = function(userId) {
+  if (!this.receivedRequests.includes(userId)) {
+    this.receivedRequests.push(userId);
+  }
+  return this.save();
+};
+
+// Instance method to accept connection request
+UserSchema.methods.acceptRequest = function(userId) {
+  // Remove from receivedRequests
+  const requestIndex = this.receivedRequests.indexOf(userId);
+  if (requestIndex > -1) {
+    this.receivedRequests.splice(requestIndex, 1);
+  }
+  
+  // Add to connections
+  if (!this.connections.includes(userId)) {
+    this.connections.push(userId);
+  }
+  
+  return this.save();
+};
+
+// Instance method to reject connection request
+UserSchema.methods.rejectRequest = function(userId) {
+  const requestIndex = this.receivedRequests.indexOf(userId);
+  if (requestIndex > -1) {
+    this.receivedRequests.splice(requestIndex, 1);
+  }
+  return this.save();
+};
+
+// Instance method to cancel sent request
+UserSchema.methods.cancelRequest = function(userId) {
+  const requestIndex = this.sentRequests.indexOf(userId);
+  if (requestIndex > -1) {
+    this.sentRequests.splice(requestIndex, 1);
+  }
+  return this.save();
+};
+
+// Static method to find users by department
+UserSchema.statics.findByDepartment = function(department) {
+  return this.find({ department: department });
+};
+
+// Static method to find users by role
+UserSchema.statics.findByRole = function(role) {
+  return this.find({ role: role });
+};
+
+// Static method to search users
+UserSchema.statics.searchUsers = function(query, excludeUserId) {
+  const searchQuery = {
+    _id: { $ne: excludeUserId },
+    $or: [
+      { name: { $regex: query, $options: 'i' } },
+      { email: { $regex: query, $options: 'i' } },
+      { department: { $regex: query, $options: 'i' } },
+      { skills: { $in: [new RegExp(query, 'i')] } }
+    ]
+  };
+  
+  return this.find(searchQuery)
+    .select('-password -warnings')
+    .limit(20);
 };
 
 module.exports = mongoose.model('User', UserSchema);
