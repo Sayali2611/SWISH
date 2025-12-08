@@ -19,13 +19,19 @@
   z-index: 1000;
   height: 70px;
 }
+/* ... existing styles ... */
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 40px;
+@media (max-width: 768px) {
+  /* ... existing styles ... */
+
+  .header-left {
+    gap: 15px;
+    /* 💥 ADD FLEX-WRAP HERE to allow the search bar to wrap */
+    flex-wrap: wrap; 
+  }
+
+  /* ... rest of the media query ... */
 }
-
 .logo {
   font-size: 26px;
   font-weight: 800;

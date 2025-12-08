@@ -1,5 +1,4 @@
-const Post = require('../models/Post');
-const User = require('../models/User');
+const { ObjectId } = require('mongodb');
 
 // @desc    Create a post
 // @route   POST /api/posts
@@ -18,8 +17,12 @@ const createPost = async (req, res) => {
       });
     }
 
-    // Get user details
-    const user = await User.findById(userId).select('name role department');
+    // Get user details from db (req.db is your database connection)
+    const user = await req.db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { name: 1, role: 1, department: 1, profilePhoto: 1 } }
+    );
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -27,21 +30,40 @@ const createPost = async (req, res) => {
       });
     }
 
-    const post = await Post.create({
+    const post = {
       content: content.trim(),
       imageUrl: imageUrl || '',
-      user: userId
-    });
+      userId: new ObjectId(userId),
+      likes: [],
+      comments: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-    // Populate user info
-    const populatedPost = await Post.findById(post._id)
-      .populate('user', 'name role profilePhoto department')
-      .populate('comments.user', 'name profilePhoto');
+    const result = await req.db.collection('posts').insertOne(post);
+    const postId = result.insertedId;
+
+    // Prepare response with user info
+    const postResponse = {
+      _id: postId,
+      content: post.content,
+      imageUrl: post.imageUrl,
+      likes: post.likes,
+      comments: post.comments,
+      createdAt: post.createdAt,
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+        profilePhoto: user.profilePhoto,
+        department: user.department
+      }
+    };
 
     res.status(201).json({
       success: true,
       message: 'Post created successfully',
-      post: populatedPost
+      post: postResponse
     });
 
   } catch (error) {
@@ -58,15 +80,52 @@ const createPost = async (req, res) => {
 // @access  Private
 const getPosts = async (req, res) => {
   try {
-    const posts = await Post.find()
+    const posts = await req.db.collection('posts')
+      .find()
       .sort({ createdAt: -1 })
-      .populate('user', 'name role profilePhoto department facultyDepartment designation')
-      .populate('comments.user', 'name profilePhoto');
+      .toArray();
+
+    // Get user data for each post
+    const postsWithUsers = await Promise.all(
+      posts.map(async (post) => {
+        const user = await req.db.collection('users').findOne(
+          { _id: new ObjectId(post.userId) },
+          { 
+            projection: { 
+              name: 1, 
+              role: 1, 
+              profilePhoto: 1, 
+              department: 1,
+              facultyDepartment: 1,
+              designation: 1 
+            } 
+          }
+        );
+
+        return {
+          _id: post._id,
+          content: post.content,
+          imageUrl: post.imageUrl,
+          likes: post.likes || [],
+          comments: post.comments || [],
+          createdAt: post.createdAt,
+          user: {
+            id: user?._id,
+            name: user?.name || "Unknown User",
+            role: user?.role,
+            profilePhoto: user?.profilePhoto,
+            department: user?.department,
+            facultyDepartment: user?.facultyDepartment,
+            designation: user?.designation
+          }
+        };
+      })
+    );
 
     res.json({
       success: true,
-      count: posts.length,
-      posts
+      count: postsWithUsers.length,
+      posts: postsWithUsers
     });
 
   } catch (error) {
@@ -86,7 +145,7 @@ const likePost = async (req, res) => {
     const postId = req.params.postId;
     const userId = req.user.id;
 
-    const post = await Post.findById(postId);
+    const post = await req.db.collection('posts').findOne({ _id: new ObjectId(postId) });
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -95,26 +154,49 @@ const likePost = async (req, res) => {
     }
 
     // Check if already liked
-    const alreadyLiked = post.likes.includes(userId);
+    const alreadyLiked = (post.likes || []).some(likeId => likeId.toString() === userId.toString());
+
     if (alreadyLiked) {
       // Unlike
-      post.likes = post.likes.filter(id => id.toString() !== userId.toString());
+      await req.db.collection('posts').updateOne(
+        { _id: new ObjectId(postId) },
+        { $pull: { likes: userId } }
+      );
     } else {
       // Like
-      post.likes.push(userId);
+      await req.db.collection('posts').updateOne(
+        { _id: new ObjectId(postId) },
+        { $push: { likes: userId } }
+      );
     }
 
-    await post.save();
+    // Get updated post with user data
+    const updatedPost = await req.db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    const user = await req.db.collection('users').findOne(
+      { _id: new ObjectId(updatedPost.userId) },
+      { projection: { name: 1, role: 1, profilePhoto: 1, department: 1 } }
+    );
 
-    // Get updated post with populated data
-    const updatedPost = await Post.findById(postId)
-      .populate('user', 'name role profilePhoto department')
-      .populate('comments.user', 'name profilePhoto');
+    const postResponse = {
+      _id: updatedPost._id,
+      content: updatedPost.content,
+      imageUrl: updatedPost.imageUrl,
+      likes: updatedPost.likes || [],
+      comments: updatedPost.comments || [],
+      createdAt: updatedPost.createdAt,
+      user: {
+        id: user?._id,
+        name: user?.name || "Unknown User",
+        role: user?.role,
+        profilePhoto: user?.profilePhoto,
+        department: user?.department
+      }
+    };
 
     res.json({
       success: true,
       message: alreadyLiked ? 'Post unliked' : 'Post liked',
-      post: updatedPost
+      post: postResponse
     });
 
   } catch (error) {
@@ -145,7 +227,11 @@ const addComment = async (req, res) => {
     }
 
     // Get user info
-    const user = await User.findById(userId).select('name');
+    const user = await req.db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { name: 1 } }
+    );
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -153,7 +239,7 @@ const addComment = async (req, res) => {
       });
     }
 
-    const post = await Post.findById(postId);
+    const post = await req.db.collection('posts').findOne({ _id: new ObjectId(postId) });
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -162,23 +248,45 @@ const addComment = async (req, res) => {
     }
 
     // Add comment
-    post.comments.push({
-      user: userId,
+    const comment = {
+      userId: userId,
       userName: user.name,
-      content: content.trim()
-    });
+      content: content.trim(),
+      timestamp: new Date()
+    };
 
-    await post.save();
+    await req.db.collection('posts').updateOne(
+      { _id: new ObjectId(postId) },
+      { $push: { comments: comment } }
+    );
 
-    // Get updated post with populated data
-    const updatedPost = await Post.findById(postId)
-      .populate('user', 'name role profilePhoto department')
-      .populate('comments.user', 'name profilePhoto');
+    // Get updated post with user data
+    const updatedPost = await req.db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    const postUser = await req.db.collection('users').findOne(
+      { _id: new ObjectId(updatedPost.userId) },
+      { projection: { name: 1, role: 1, profilePhoto: 1, department: 1 } }
+    );
+
+    const postResponse = {
+      _id: updatedPost._id,
+      content: updatedPost.content,
+      imageUrl: updatedPost.imageUrl,
+      likes: updatedPost.likes || [],
+      comments: updatedPost.comments || [],
+      createdAt: updatedPost.createdAt,
+      user: {
+        id: postUser?._id,
+        name: postUser?.name || "Unknown User",
+        role: postUser?.role,
+        profilePhoto: postUser?.profilePhoto,
+        department: postUser?.department
+      }
+    };
 
     res.json({
       success: true,
       message: 'Comment added successfully',
-      post: updatedPost
+      post: postResponse
     });
 
   } catch (error) {
@@ -190,9 +298,86 @@ const addComment = async (req, res) => {
   }
 };
 
+// @desc    Search posts by content
+// @route   GET /api/posts/search
+// @access  Private
+const searchPosts = async (req, res) => {
+  try {
+    const { q } = req.query; // Search query
+    const userId = req.user.id;
+
+    if (!q || q.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required'
+      });
+    }
+
+    // Create search query for posts
+    const searchQuery = {
+      content: { $regex: q, $options: 'i' } // Case-insensitive search
+    };
+
+    // Find posts matching the search
+    const posts = await req.db.collection('posts')
+      .find(searchQuery)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray();
+
+    // Get user data for each post
+    const postsWithUsers = await Promise.all(
+      posts.map(async (post) => {
+        const user = await req.db.collection('users').findOne(
+          { _id: new ObjectId(post.userId) },
+          { 
+            projection: { 
+              name: 1, 
+              role: 1, 
+              profilePhoto: 1, 
+              department: 1 
+            } 
+          }
+        );
+        
+        return {
+          _id: post._id,
+          content: post.content,
+          imageUrl: post.imageUrl,
+          likes: post.likes || [],
+          comments: post.comments || [],
+          createdAt: post.createdAt,
+          user: {
+            id: user?._id,
+            name: user?.name || "Unknown User",
+            role: user?.role,
+            profilePhoto: user?.profilePhoto,
+            department: user?.department
+          }
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      count: postsWithUsers.length,
+      query: q,
+      results: postsWithUsers
+    });
+
+  } catch (error) {
+    console.error('Post search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during post search'
+    });
+  }
+};
+
 module.exports = {
   createPost,
   getPosts,
   likePost,
-  addComment
+  addComment,
+  searchPosts
 };

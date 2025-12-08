@@ -238,9 +238,48 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// 🚀 NEW FUNCTION: Search Users
+// @desc    Search for users by name
+// @route   GET /api/users/search
+// @access  Private
+const searchUsers = async (req, res) => {
+  try {
+    // The frontend sends the search query as 'name' in the URL query parameters
+    const { name } = req.query; 
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ message: 'Search term is required' });
+    }
+
+    // Create a case-insensitive regex for the search term (partial match)
+    // The 'i' option makes the search case-insensitive
+    const searchRegex = new RegExp(name, 'i');
+
+    // Find users where name matches, excluding the current user
+    const users = await User.find({
+      name: { $regex: searchRegex },
+      // Exclude the user performing the search
+      _id: { $ne: req.user.id } 
+    })
+    // Select only the necessary fields for the search results display
+    .select('name email profilePhoto role department facultyDepartment')
+    .limit(10); // Limit results for better performance
+
+    res.json(users);
+
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error during user search' 
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getProfile,
-  updateProfile
+  updateProfile,
+  searchUsers // 👈 Export the new function
 };

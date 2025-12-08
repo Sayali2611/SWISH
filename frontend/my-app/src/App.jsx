@@ -9,6 +9,7 @@ import Network from "./components/Network";
 import IncomingRequests from "./components/IncomingRequests";  // FIXED
 import Connections from "./components/Connections";            // FIXED
 import "./styles/global.css";
+import ProfilePage from "./components/ProfilePage";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/network" element={<Network />} />
         <Route path="/requests" element={<IncomingRequests />} />   {/* FIXED */}
         <Route path="/connections" element={<Connections />} />     {/* FIXED */}
+        <Route path="/profile/:userId" element={<ProfilePage />} />
       </Routes>
     </Router>
   );
