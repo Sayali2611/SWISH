@@ -2,12 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { getSocket } from "./NotificationBell";
 import Toast from "./Toast";
+import { useNavigate } from "react-router-dom";
 import "../styles/Notifications.css";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
 
   const token = localStorage.getItem("token");
 
@@ -112,6 +114,52 @@ export default function NotificationsPage() {
     }
   };
 
+  // HANDLE NOTIFICATION CLICK
+  const handleNotificationClick = async (notification) => {
+    // Mark as read first
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+
+    // If notification has a postId, navigate to feed and highlight the post
+    if (notification.postId) {
+      console.log("🎯 [Notifications] Navigating to post:", notification.postId);
+      
+      // Store highlighted post data in localStorage (similar to search)
+      const highlightData = {
+        postId: notification.postId,
+        timestamp: Date.now(),
+        from: 'notification',
+        notificationId: notification.id,
+        postContent: notification.message || "Notification post",
+        userName: notification.userName || "User"
+      };
+      
+      localStorage.setItem('searchHighlightedPost', JSON.stringify(highlightData));
+      sessionStorage.setItem('highlightedPostId', notification.postId);
+      
+      // Trigger feed highlight via custom event
+      window.dispatchEvent(new Event('feedHighlight'));
+      window.dispatchEvent(new Event('refreshFeed'));
+      
+      // Small delay to ensure storage is updated
+      setTimeout(() => {
+        // Navigate to feed with highlight parameter
+        navigate(`/feed?highlight=${notification.postId}`);
+        
+        // Also dispatch a global event for Feed.jsx to catch
+        window.dispatchEvent(new CustomEvent('feedHighlight', {
+          detail: { postId: notification.postId, from: 'notification' }
+        }));
+      }, 100);
+    }
+    
+    // If notification has a link field, navigate to that link
+    else if (notification.link) {
+      navigate(notification.link);
+    }
+  };
+
   if (loading)
     return (
       <div className="notif-loading-container">
@@ -134,7 +182,7 @@ export default function NotificationsPage() {
         <div className="notifications-empty">
           <div className="empty-icon">🔔</div>
           <h3>No Notifications Yet</h3>
-          <p>We’ll notify you when someone interacts with your posts.</p>
+          <p>We'll notify you when someone interacts with your posts.</p>
         </div>
       ) : (
         <div className="notifications-list">
@@ -146,12 +194,10 @@ export default function NotificationsPage() {
                 ${n.animation ? "notif-slide-in" : ""} 
                 ${n.deleting ? "notif-fade-out" : ""}
               `}
+              onClick={() => handleNotificationClick(n)}
+              style={{ cursor: n.postId || n.link ? 'pointer' : 'default' }}
             >
-              <div
-                className="notif-left"
-                onClick={() => markAsRead(n.id)}
-                style={{ cursor: "pointer" }}
-              >
+              <div className="notif-left">
                 <div className="notif-avatar">
                   {n.userImage ? (
                     <img src={n.userImage} alt={n.userName} />
@@ -165,13 +211,23 @@ export default function NotificationsPage() {
                     <strong>{n.userName}</strong> {n.message}
                   </p>
                   <span className="notif-time">{n.timeAgo}</span>
+                  
+                  {/* Show click hint if it's a post notification */}
+                  {n.postId && (
+                    <span className="click-hint">
+                      Click to view post →
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Delete Button */}
               <button
                 className="notif-delete-btn"
-                onClick={() => deleteNotification(n.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteNotification(n.id);
+                }}
               >
                 ✕
               </button>

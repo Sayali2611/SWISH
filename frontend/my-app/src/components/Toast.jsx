@@ -1,8 +1,35 @@
-export default function Toast({ notification, onClose }) {
+export default function Toast({ notification, onClose, onOpen }) {
   if (!notification) return null;
 
+  const handleToastClick = () => {
+    // If toast has a postId, trigger navigation
+    if (notification.postId) {
+      // Store highlighted post data
+      const highlightData = {
+        postId: notification.postId,
+        timestamp: Date.now(),
+        from: 'toast',
+        notificationId: notification.id
+      };
+      
+      localStorage.setItem('searchHighlightedPost', JSON.stringify(highlightData));
+      
+      // Trigger feed highlight
+      window.dispatchEvent(new Event('feedHighlight'));
+      
+      // If onOpen callback exists, call it (for opening notifications panel)
+      if (onOpen) {
+        onOpen();
+      }
+    }
+  };
+
   return (
-    <div className="toast">
+    <div 
+      className="toast"
+      onClick={handleToastClick}
+      style={{ cursor: notification.postId ? 'pointer' : 'default' }}
+    >
       <div className="toast-left">
         <div className="toast-avatar">
           {notification.userImage ? (
@@ -16,6 +43,9 @@ export default function Toast({ notification, onClose }) {
             <strong>{notification.userName}</strong> {notification.message}
           </div>
           <div className="toast-time">{notification.timeAgo}</div>
+          {notification.postId && (
+            <div className="toast-hint">Click to view →</div>
+          )}
         </div>
       </div>
 
