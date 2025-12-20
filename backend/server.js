@@ -466,7 +466,57 @@ app.post("/api/auth/login", async (req, res) => {
 
 // ==================== PROFILE ROUTES ====================
 
-// Get user profile
+// ==================== PROFILE ROUTES ====================
+
+// ✅✅✅ NEW ENDPOINT: Upload profile photo
+app.post("/api/auth/upload-photo", auth, profileUpload.single('profilePhoto'), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No file uploaded' 
+      });
+    }
+    
+    const photoUrl = req.file.path; // Cloudinary URL
+    
+    // Update user with new photo URL
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { profilePhoto: photoUrl, updatedAt: new Date() } }
+    );
+    
+    // Get updated user
+    const updatedUser = await db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { password: 0 } }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Profile photo updated successfully',
+      photoUrl: photoUrl,
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        profilePhoto: updatedUser.profilePhoto,
+        role: updatedUser.role
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error uploading profile photo:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error uploading photo',
+      error: error.message 
+    });
+  }
+});
+
 app.get("/api/auth/profile", auth, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -874,6 +924,81 @@ app.delete("/api/posts/:id", auth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting post:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== UPDATE POST ROUTE ====================
+
+// Update a post
+app.put("/api/posts/:id", auth, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const userId = req.user.userId;
+    const { content } = req.body;
+
+    // Validate postId
+    if (!ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: 'Post content is required' });
+    }
+
+    // Find the post
+    const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Check if user is owner
+    if (post.userId.toString() !== userId) {
+      return res.status(403).json({ message: 'Not authorized to edit this post' });
+    }
+
+    // Update the post
+    const updateData = {
+      content: content.trim(),
+      updatedAt: new Date()
+    };
+
+    const result = await db.collection('posts').updateOne(
+      { _id: new ObjectId(postId) },
+      { $set: updateData }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({ message: 'Failed to update post' });
+    }
+
+    // Get updated post with user info
+    const updatedPost = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+
+    const postResponse = {
+      _id: updatedPost._id,
+      content: updatedPost.content,
+      type: updatedPost.type || 'text',
+      media: updatedPost.media || [],
+      likes: updatedPost.likes || [],
+      comments: updatedPost.comments || [],
+      event: updatedPost.event || null,
+      poll: updatedPost.poll || null,
+      createdAt: updatedPost.createdAt,
+      updatedAt: updatedPost.updatedAt,
+      user: {
+        id: user?._id,
+        name: user?.name || "Unknown User",
+        profilePhoto: user?.profilePhoto,
+        role: user?.role,
+        department: user?.department
+      }
+    };
+
+    res.json(postResponse);
+  } catch (error) {
+    console.error("Error updating post:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -1554,6 +1679,90 @@ app.get("/api/users/:userId/posts", auth, async (req, res) => {
     res.json(postsWithUser);
   } catch (error) {
     console.error("Error fetching user posts:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== USER ACTIVITY ENDPOINT ====================
+
+// Get user activity (likes and comments)
+app.get("/api/users/:userId/activity", auth, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    // Get all posts
+    const posts = await db.collection('posts').find().toArray();
+    
+    const userActivity = [];
+    
+    posts.forEach(post => {
+      // Check if user liked this post
+      const hasLiked = post.likes && post.likes.includes(userId);
+      
+      // Check if user commented on this post
+      const userComments = post.comments ? 
+        post.comments.filter(comment => comment.userId === userId) : [];
+      
+      if (hasLiked || userComments.length > 0) {
+        // Get post owner info for activity
+        const postOwnerId = post.userId.toString();
+        
+        if (hasLiked) {
+          userActivity.push({
+            type: 'like',
+            postId: post._id,
+            postContent: post.content.substring(0, 100) + (post.content.length > 100 ? '...' : ''),
+            postType: post.type || 'text',
+            postOwnerId: postOwnerId,
+            postOwnerName: 'User', // We'll populate later
+            timestamp: post.createdAt
+          });
+        }
+        
+        // Add comment activities
+        userComments.forEach(comment => {
+          userActivity.push({
+            type: 'comment',
+            postId: post._id,
+            postContent: post.content.substring(0, 100) + (post.content.length > 100 ? '...' : ''),
+            commentContent: comment.content.substring(0, 100) + (comment.content.length > 100 ? '...' : ''),
+            postType: post.type || 'text',
+            postOwnerId: postOwnerId,
+            postOwnerName: 'User', // We'll populate later
+            timestamp: comment.timestamp
+          });
+        });
+      }
+    });
+    
+    // Get post owner names for all activities
+    for (let activity of userActivity) {
+      try {
+        const postOwner = await db.collection('users').findOne(
+          { _id: new ObjectId(activity.postOwnerId) },
+          { projection: { name: 1 } }
+        );
+        activity.postOwnerName = postOwner?.name || 'Unknown User';
+      } catch (err) {
+        activity.postOwnerName = 'Unknown User';
+      }
+    }
+    
+    // Sort by timestamp (newest first)
+    userActivity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    res.json({
+      success: true,
+      count: userActivity.length,
+      activity: userActivity.slice(0, 50) // Limit to 50 items
+    });
+    
+  } catch (error) {
+    console.error("Error fetching user activity:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

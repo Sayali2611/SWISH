@@ -1,6 +1,278 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import '../styles/MediaUploader.css';
 
+// LinkedIn-style Video Player Component (merged into MediaUploader)
+const LinkedInVideoPlayer = ({ src, format = 'mp4', type = 'video' }) => {
+  const videoRef = useRef(null);
+  const containerRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showControls, setShowControls] = useState(false);
+  const [volume, setVolume] = useState(0);
+  const [isInView, setIsInView] = useState(false);
+
+  // Initialize video metadata
+  useEffect(() => {
+    if (videoRef.current) {
+      const handleLoadedMetadata = () => {
+        setDuration(videoRef.current.duration);
+        videoRef.current.muted = true; // LinkedIn default: muted
+        videoRef.current.volume = 0;
+      };
+      
+      const handleTimeUpdate = () => {
+        setCurrentTime(videoRef.current.currentTime);
+      };
+
+      videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+      videoRef.current.addEventListener('timeupdate', handleTimeUpdate);
+
+      return () => {
+        if (videoRef.current) {
+          videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          videoRef.current.removeEventListener('timeupdate', handleTimeUpdate);
+        }
+      };
+    }
+  }, [src]);
+
+  // LinkedIn-style: Auto-play when in viewport, auto-pause when out
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          setIsInView(entry.isIntersecting);
+          
+          if (entry.isIntersecting) {
+            // Video entered viewport - try to play
+            if (videoRef.current) {
+              videoRef.current.muted = true; // LinkedIn default: muted
+              const playPromise = videoRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise
+                  .then(() => {
+                    setIsPlaying(true);
+                  })
+                  .catch(error => {
+                    console.log("Auto-play prevented:", error);
+                    // Browser blocked auto-play, show play button
+                  });
+              }
+            }
+          } else {
+            // Video left viewport - pause
+            if (videoRef.current && !videoRef.current.paused) {
+              videoRef.current.pause();
+              setIsPlaying(false);
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.5, // 50% of video should be visible
+        rootMargin: '100px' // Start loading when 100px away
+      }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+    };
+  }, []);
+
+  // Handle video click (LinkedIn: click to mute/unmute)
+  const handleVideoClick = () => {
+    if (videoRef.current) {
+      if (isMuted) {
+        videoRef.current.muted = false;
+        videoRef.current.volume = 0.5;
+        setIsMuted(false);
+        setVolume(0.5);
+      } else {
+        videoRef.current.muted = true;
+        videoRef.current.volume = 0;
+        setIsMuted(true);
+        setVolume(0);
+      }
+    }
+  };
+
+  // Handle play/pause
+  const handlePlayPause = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  // Handle video ended
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  // Handle video play
+  const handleVideoPlay = () => {
+    setIsPlaying(true);
+  };
+
+  // Handle video pause
+  const handleVideoPause = () => {
+    setIsPlaying(false);
+  };
+
+  // Handle progress bar click
+  const handleProgressClick = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const percent = (e.clientX - rect.left) / rect.width;
+      videoRef.current.currentTime = percent * videoRef.current.duration;
+    }
+  };
+
+  // Handle volume change
+  const handleVolumeChange = (e) => {
+    e.stopPropagation();
+    const newVolume = parseFloat(e.target.value);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+      videoRef.current.muted = newVolume === 0;
+      setIsMuted(newVolume === 0);
+      setVolume(newVolume);
+    }
+  };
+
+  // Format time to MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  return (
+    <div 
+      className="linkedin-video-container"
+      ref={containerRef}
+      onMouseEnter={() => setShowControls(true)}
+      onMouseLeave={() => setShowControls(false)}
+    >
+      <video
+        ref={videoRef}
+        className="linkedin-video"
+        preload="metadata"
+        muted={isMuted}
+        loop
+        playsInline
+        onClick={handleVideoClick}
+        onEnded={handleVideoEnded}
+        onPlay={handleVideoPlay}
+        onPause={handleVideoPause}
+      >
+        <source src={src} type={`${type}/${format}`} />
+        Your browser does not support the video tag.
+      </video>
+
+      {/* LinkedIn-style Controls */}
+      <div className={`video-controls ${showControls ? 'visible' : ''}`}>
+        {/* Play/Pause Button - Using clean icons */}
+        <button 
+          className="control-btn play-pause-btn"
+          onClick={handlePlayPause}
+        >
+          {isPlaying ? '❚❚' : '▶'}
+        </button>
+
+        {/* Progress Bar */}
+        <div className="progress-container" onClick={handleProgressClick}>
+          <div className="progress-track">
+            <div 
+              className="progress-played" 
+              style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
+            />
+            <div 
+              className="progress-buffered" 
+              style={{ width: '100%' }}
+            />
+          </div>
+          <input
+            type="range"
+            className="progress-slider"
+            min="0"
+            max="100"
+            value={(currentTime / duration) * 100 || 0}
+            onChange={(e) => {
+              if (videoRef.current) {
+                const time = (e.target.value / 100) * videoRef.current.duration;
+                videoRef.current.currentTime = time;
+              }
+            }}
+          />
+        </div>
+
+        {/* Time Display */}
+        <span className="time-display">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </span>
+
+        {/* Mute/Unmute Button - Using clean icons */}
+        <button 
+          className="control-btn mute-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVideoClick();
+          }}
+        >
+          {isMuted ? '🔇' : '🔊'}
+        </button>
+
+        {/* Volume Slider */}
+        <input
+          type="range"
+          className="volume-slider"
+          min="0"
+          max="1"
+          step="0.1"
+          value={volume}
+          onChange={handleVolumeChange}
+        />
+      </div>
+
+      {/* Overlay when not playing */}
+      {!isPlaying && (
+        <div className="video-overlay" onClick={handlePlayPause}>
+          <div className="play-button-large">
+            <span className="play-icon">▶</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mute indicator - subtle dot */}
+      {isMuted && (
+        <div className="mute-indicator">
+          <span className="mute-icon">🔇</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Main MediaUploader Component
 const MediaUploader = ({ 
   onFilesSelect, 
   onRemoveFile, 
@@ -197,14 +469,10 @@ const MediaUploader = ({
                     />
                   ) : (
                     <div className="preview-video">
-                      <video src={preview.url} className="video-thumbnail" />
-                      <div className="video-badge">🎥</div>
-                      {preview.duration && (
-                        <span className="video-duration">
-                          {Math.floor(preview.duration / 60)}:
-                          {String(preview.duration % 60).padStart(2, '0')}
-                        </span>
-                      )}
+                      <LinkedInVideoPlayer 
+                        src={preview.url}
+                        format={preview.name?.split('.').pop() || 'mp4'}
+                      />
                     </div>
                   )}
                   
@@ -235,4 +503,6 @@ const MediaUploader = ({
   );
 };
 
+// Export both components
+export { LinkedInVideoPlayer };
 export default MediaUploader;

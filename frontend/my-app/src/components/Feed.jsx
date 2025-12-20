@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import VideoPlayer from "../components/VideoPlayer";
+import { LinkedInVideoPlayer } from "../components/MediaUploader";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/Feed.css";
 // Import her notification components
@@ -12,6 +12,358 @@ import "../styles/Notifications.css";
    -------------------- */
 import ExploreSearch from "../components/ExploreSearch";
 import "../styles/ExploreSearch.css";
+
+// ==================== IMAGE CAROUSEL COMPONENT ====================
+const ImageCarousel = ({ images, videos }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoRefs = useRef([]);
+  const carouselRef = useRef(null);
+  const observerRef = useRef(null);
+
+  // Combine images and videos into media array
+  const media = [...(images || []), ...(videos || [])];
+  
+  if (!media || media.length === 0) return null;
+
+  const isVideo = (item) => item.type === 'video';
+  const totalSlides = media.length;
+
+  // Function to handle video play/pause
+  const handleVideoPlayPause = () => {
+    const video = videoRefs.current[currentIndex];
+    if (!video) return;
+    
+    if (video.paused) {
+      video.play().then(() => {
+        setIsVideoPlaying(true);
+      }).catch(e => {
+        console.log("Auto-play prevented:", e);
+      });
+    } else {
+      video.pause();
+      setIsVideoPlaying(false);
+    }
+  };
+
+  const goToSlide = (index) => {
+    // Stop any playing video before changing slide
+    if (isVideo(media[currentIndex])) {
+      const video = videoRefs.current[currentIndex];
+      if (video) {
+        video.pause();
+        setIsVideoPlaying(false);
+      }
+    }
+    
+    setCurrentIndex(index);
+    
+    // Auto-play video if it's a video slide
+    if (isVideo(media[index])) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        const video = videoRefs.current[index];
+        if (video) {
+          video.play().then(() => {
+            setIsVideoPlaying(true);
+          }).catch(e => {
+            console.log("Auto-play prevented:", e);
+          });
+        }
+      }, 100);
+    }
+  };
+
+  const nextSlide = () => {
+    goToSlide((prevIndex) => 
+      prevIndex === totalSlides - 1 ? 0 : prevIndex + 1
+    );
+  };
+
+  const prevSlide = () => {
+    goToSlide((prevIndex) => 
+      prevIndex === 0 ? totalSlides - 1 : prevIndex - 1
+    );
+  };
+
+  // Handle touch events for mobile swipe
+  const handleTouchStart = (e) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+    
+    const distance = touchStartX - touchEndX;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      nextSlide();
+    } else if (isRightSwipe) {
+      prevSlide();
+    }
+
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
+  // Handle video events
+  const handleVideoPlay = () => {
+    setIsVideoPlaying(true);
+  };
+
+  const handleVideoPause = () => {
+    setIsVideoPlaying(false);
+  };
+
+  const handleVideoEnded = () => {
+    setIsVideoPlaying(false);
+  };
+
+  // Intersection Observer to pause video when not visible
+  useEffect(() => {
+    if (!carouselRef.current) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting && isVideo(media[currentIndex])) {
+            const video = videoRefs.current[currentIndex];
+            if (video && !video.paused) {
+              video.pause();
+              setIsVideoPlaying(false);
+            }
+          } else if (entry.isIntersecting && isVideo(media[currentIndex])) {
+            const video = videoRefs.current[currentIndex];
+            if (video && video.paused) {
+              video.play().catch(e => console.log("Auto-play prevented:", e));
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.5, // When 50% of carousel is visible
+        rootMargin: '100px' // Add some margin for better UX
+      }
+    );
+
+    observerRef.current.observe(carouselRef.current);
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [currentIndex, media]);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') prevSlide();
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === ' ') {
+        e.preventDefault();
+        handleVideoPlayPause();
+      }
+      if (e.key === 'Escape') {
+        if (isVideo(media[currentIndex])) {
+          const video = videoRefs.current[currentIndex];
+          if (video) {
+            video.pause();
+            setIsVideoPlaying(false);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [prevSlide, nextSlide, currentIndex, media, handleVideoPlayPause]);
+
+  // Clean up videos when component unmounts
+  useEffect(() => {
+    return () => {
+      videoRefs.current.forEach(video => {
+        if (video) {
+          video.pause();
+          video.src = '';
+          video.load();
+        }
+      });
+    };
+  }, []);
+
+  return (
+    <div className="linkedin-carousel" ref={carouselRef}>
+      {/* Main Carousel Container */}
+      <div 
+        className="carousel-container"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Left Navigation Arrow */}
+        {totalSlides > 1 && (
+          <button 
+            className="carousel-arrow left-arrow"
+            onClick={prevSlide}
+            aria-label="Previous image"
+          >
+            ‹
+          </button>
+        )}
+
+        {/* Media Display */}
+        <div className="carousel-slide">
+          {isVideo(media[currentIndex]) ? (
+            <div className="video-slide">
+              <video
+                ref={el => {
+                  videoRefs.current[currentIndex] = el;
+                  if (el) {
+                    // Clean up previous event listeners
+                    el.onplay = null;
+                    el.onpause = null;
+                    el.onended = null;
+                    
+                    // Add new event listeners
+                    el.onplay = handleVideoPlay;
+                    el.onpause = handleVideoPause;
+                    el.onended = handleVideoEnded;
+                    
+                    // Set video attributes
+                    el.muted = false;
+                    el.playsInline = true;
+                    el.preload = "metadata";
+                  }
+                }}
+                src={media[currentIndex].url}
+                className="carousel-video"
+                playsInline
+              />
+              
+              {/* Video Controls Overlay */}
+              <div className="carousel-video-controls">
+                <button 
+                  className="video-control-btn play-pause-btn"
+                  onClick={handleVideoPlayPause}
+                  aria-label={isVideoPlaying ? "Pause" : "Play"}
+                >
+                  {isVideoPlaying ? '❚❚' : '▶'}
+                </button>
+                
+                <div className="video-time-display">
+                  {(() => {
+                    const video = videoRefs.current[currentIndex];
+                    if (!video) return "0:00 / 0:00";
+                    
+                    const formatTime = (seconds) => {
+                      const mins = Math.floor(seconds / 60);
+                      const secs = Math.floor(seconds % 60);
+                      return `${mins}:${secs.toString().padStart(2, '0')}`;
+                    };
+                    
+                    return `${formatTime(video.currentTime || 0)} / ${formatTime(video.duration || 0)}`;
+                  })()}
+                </div>
+                
+                <div className="video-progress-container">
+                  <input
+                    type="range"
+                    className="video-progress-slider"
+                    min="0"
+                    max="100"
+                    value={(() => {
+                      const video = videoRefs.current[currentIndex];
+                      if (!video || !video.duration) return 0;
+                      return (video.currentTime / video.duration) * 100;
+                    })()}
+                    onChange={(e) => {
+                      const video = videoRefs.current[currentIndex];
+                      if (video && video.duration) {
+                        video.currentTime = (e.target.value / 100) * video.duration;
+                      }
+                    }}
+                  />
+                </div>
+                
+                <button 
+                  className="video-control-btn mute-btn"
+                  onClick={() => {
+                    const video = videoRefs.current[currentIndex];
+                    if (video) {
+                      video.muted = !video.muted;
+                    }
+                  }}
+                  aria-label="Mute"
+                >
+                  🔈
+                </button>
+              </div>
+              
+              {!isVideoPlaying && (
+                <div className="video-play-overlay">
+                  <button 
+                    className="video-play-button"
+                    onClick={handleVideoPlayPause}
+                  >
+                    ▶
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <img
+              src={media[currentIndex].url}
+              alt={`Slide ${currentIndex + 1}`}
+              className="carousel-image"
+              loading="lazy"
+            />
+          )}
+        </div>
+
+        {/* Right Navigation Arrow */}
+        {totalSlides > 1 && (
+          <button 
+            className="carousel-arrow right-arrow"
+            onClick={nextSlide}
+            aria-label="Next image"
+          >
+            ›
+          </button>
+        )}
+
+        {/* Image Counter */}
+        {totalSlides > 1 && (
+          <div className="image-counter">
+            {currentIndex + 1} / {totalSlides}
+          </div>
+        )}
+      </div>
+
+      {/* Dots Indicator */}
+      {totalSlides > 1 && (
+        <div className="carousel-dots">
+          {media.map((_, index) => (
+            <button
+              key={index}
+              className={`carousel-dot ${index === currentIndex ? 'active' : ''}`}
+              onClick={() => goToSlide(index)}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 function Feed() {
   const [posts, setPosts] = useState([]);
@@ -1165,35 +1517,16 @@ function Feed() {
     );
   };
 
-  // Render media grid with LinkedIn-style video player
-  const renderMediaGrid = (media) => {
+  // Updated renderMedia function to use carousel
+  const renderMedia = (media) => {
     if (!media || media.length === 0) return null;
     
-    const count = media.length;
+    // Separate images and videos for the carousel
+    const images = media.filter(item => item.type === 'image');
+    const videos = media.filter(item => item.type === 'video');
     
     return (
-      <div className={`post-media-grid count-${count}`}>
-        {media.map((mediaItem, index) => (
-          <div key={index} className={`media-item ${count === 1 ? 'single' : 'multiple'}`}>
-            {mediaItem.type === 'image' ? (
-              <img 
-                src={mediaItem.url} 
-                alt={`Post media ${index + 1}`}
-                className="post-media"
-                loading="lazy"
-              />
-            ) : (
-              <div className="video-container-linkedin">
-                <VideoPlayer 
-                  src={mediaItem.url}
-                  format={mediaItem.format}
-                  type={mediaItem.type}
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <ImageCarousel images={images} videos={videos} />
     );
   };
 
@@ -1747,8 +2080,8 @@ function Feed() {
                       {/* Display Poll */}
                       {post.type === 'poll' && post.poll && renderPollCard(post.poll, post._id)}
                       
-                      {/* Display Media */}
-                      {post.media && post.media.length > 0 && renderMediaGrid(post.media)}
+                      {/* Display Media with LinkedIn-style Carousel */}
+                      {post.media && post.media.length > 0 && renderMedia(post.media)}
                       
                       {/* Legacy imageUrl support */}
                       {post.imageUrl && !post.media && (
