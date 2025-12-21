@@ -7,160 +7,6 @@ import "../styles/Notifications.css";
 import ExploreSearch from "../components/ExploreSearch";
 import "../styles/ExploreSearch.css";
 
-
-// ==================== SOCIAL SHARE COMPONENT ====================
-import {
-  FacebookShareButton,
-  TwitterShareButton,
-  LinkedinShareButton,
-  WhatsappShareButton,
-  TelegramShareButton,
-  EmailShareButton,
-  FacebookIcon,
-  TwitterIcon,
-  LinkedinIcon,
-  WhatsappIcon,
-  TelegramIcon,
-  EmailIcon,
-  RedditShareButton,
-  RedditIcon,
-  PinterestShareButton,
-  PinterestIcon,
-} from "react-share";
-import { IoLogoInstagram } from "react-icons/io5";
-
-const SocialSharePopup = ({ post, onClose }) => {
-  const [copied, setCopied] = useState(false);
-  const shareUrl = `${window.location.origin}/post/${post._id}`;
-  const shareTitle = `${post.user?.name || "User"}: ${post.content?.substring(0, 100)}${post.content?.length > 100 ? "..." : ""}`;
-  
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareUrl)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(err => console.error('Failed to copy:', err));
-  };
-
-  // Instagram doesn't have a direct share URL for web, so we create a custom handler
-  const handleInstagramShare = () => {
-    // Instagram doesn't support direct sharing from web
-    // We'll copy the link and open Instagram
-    navigator.clipboard.writeText(shareUrl)
-      .then(() => {
-        setCopied(true);
-        // Option 1: Open Instagram in new tab (user can paste the link manually)
-        window.open('https://www.instagram.com/', '_blank');
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(err => console.error('Failed to copy:', err));
-  };
-
-  const shareButtons = [
-    {
-      platform: 'Facebook',
-      button: FacebookShareButton,
-      icon: FacebookIcon,
-      props: { url: shareUrl, quote: shareTitle, hashtag: "#CampusConnect" }
-    },
-    {
-      platform: 'Twitter',
-      button: TwitterShareButton,
-      icon: TwitterIcon,
-      props: { url: shareUrl, title: shareTitle, hashtags: ["CampusConnect", "CampusLife"] }
-    },
-    {
-      platform: 'LinkedIn',
-      button: LinkedinShareButton,
-      icon: LinkedinIcon,
-      props: { url: shareUrl, title: shareTitle, summary: post.content?.substring(0, 200) }
-    },
-    {
-      platform: 'WhatsApp',
-      button: WhatsappShareButton,
-      icon: WhatsappIcon,
-      props: { url: shareUrl, title: shareTitle, separator: " | " }
-    },
-    {
-      platform: 'Telegram',
-      button: TelegramShareButton,
-      icon: TelegramIcon,
-      props: { url: shareUrl, title: shareTitle }
-    },
-    {
-      platform: 'Email',
-      button: EmailShareButton,
-      icon: EmailIcon,
-      props: { url: shareUrl, subject: `Check out this post from ${post.user?.name || "CampusConnect"}`, body: `${shareTitle}\n\n${shareUrl}` }
-    },
-    {
-      platform: 'Reddit',
-      button: RedditShareButton,
-      icon: RedditIcon,
-      props: { url: shareUrl, title: shareTitle }
-    },
-    {
-      platform: 'Instagram',
-      button: 'custom', // Custom handler for Instagram
-      icon: IoLogoInstagram,
-      handler: handleInstagramShare
-    }
-  ];
-
-  return (
-    <div className="share-popup-overlay" onClick={onClose}>
-      <div className="share-popup" onClick={(e) => e.stopPropagation()}>
-        <div className="share-popup-header">
-          <h3>Share this post</h3>
-          <button className="close-share-btn" onClick={onClose}>×</button>
-        </div>
-        
-        <div className="share-platforms">
-          {shareButtons.map(({ platform, button: ShareButton, icon: Icon, props, handler }) => (
-            <div key={platform} className="share-platform-item">
-              {platform === 'Instagram' ? (
-                <button 
-                  className="share-platform-btn custom-share-btn"
-                  onClick={handler}
-                  aria-label={`Share on ${platform}`}
-                >
-                  <div className="instagram-icon-wrapper">
-                    <Icon size={48} className="instagram-icon" />
-                  </div>
-                </button>
-              ) : (
-                <ShareButton {...props} className="share-platform-btn">
-                  <Icon size={48} round />
-                </ShareButton>
-              )}
-              <span className="platform-name">{platform}</span>
-            </div>
-          ))}
-        </div>
-        
-        <div className="share-link-section">
-          <div className="share-link-input">
-            <input
-              type="text"
-              value={shareUrl}
-              readOnly
-              className="link-input"
-            />
-            <button 
-              className={`copy-link-btn ${copied ? 'copied' : ''}`}
-              onClick={handleCopyLink}
-            >
-              {copied ? '✓ Copied' : 'Copy Link'}
-            </button>
-          </div>
-          <p className="share-note">Share this post with your network</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ==================== IMAGE CAROUSEL COMPONENT ====================
 const ImageCarousel = ({ images, videos }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -179,6 +25,7 @@ const ImageCarousel = ({ images, videos }) => {
   const isInViewportRef = useRef(true);
   const scrollTimeoutRef = useRef(null);
 
+  // Combine images and videos into media array
   const media = [...(images || []), ...(videos || [])];
   
   if (!media || media.length === 0) return null;
@@ -186,6 +33,7 @@ const ImageCarousel = ({ images, videos }) => {
   const isVideo = (item) => item.type === 'video';
   const totalSlides = media.length;
 
+  // Function to handle video play/pause
   const handleVideoPlayPause = useCallback(() => {
     const video = videoRefs.current[currentIndex];
     if (!video) return;
@@ -204,6 +52,7 @@ const ImageCarousel = ({ images, videos }) => {
     }
   }, [currentIndex]);
 
+  // Start progress update interval
   const startProgressInterval = useCallback(() => {
     if (videoIntervalRef.current) {
       clearInterval(videoIntervalRef.current);
@@ -218,6 +67,7 @@ const ImageCarousel = ({ images, videos }) => {
     }, 100);
   }, [currentIndex]);
 
+  // Clear progress interval
   const clearProgressInterval = useCallback(() => {
     if (videoIntervalRef.current) {
       clearInterval(videoIntervalRef.current);
@@ -225,6 +75,7 @@ const ImageCarousel = ({ images, videos }) => {
     }
   }, []);
 
+  // Format time helper
   const formatTime = useCallback((seconds) => {
     if (isNaN(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -233,6 +84,7 @@ const ImageCarousel = ({ images, videos }) => {
   }, []);
 
   const goToSlide = useCallback((index) => {
+    // Stop any playing video before changing slide
     if (isVideo(media[currentIndex])) {
       const video = videoRefs.current[currentIndex];
       if (video) {
@@ -243,10 +95,13 @@ const ImageCarousel = ({ images, videos }) => {
     }
     
     setCurrentIndex(index);
+    
+    // Reset video state for new slide
     setVideoProgress(0);
     setVideoCurrentTime(0);
     setVideoDuration(0);
     
+    // Auto-play video if it's a video slide and carousel is in viewport
     if (isVideo(media[index]) && isInViewportRef.current) {
       setTimeout(() => {
         const video = videoRefs.current[index];
@@ -276,6 +131,7 @@ const ImageCarousel = ({ images, videos }) => {
     );
   }, [goToSlide]);
 
+  // Handle touch events for mobile swipe
   const handleTouchStart = (e) => {
     setTouchStartX(e.touches[0].clientX);
   };
@@ -301,6 +157,7 @@ const ImageCarousel = ({ images, videos }) => {
     setTouchEndX(null);
   };
 
+  // Handle video events
   const handleVideoPlay = useCallback(() => {
     setIsVideoPlaying(true);
     startProgressInterval();
@@ -336,6 +193,7 @@ const ImageCarousel = ({ images, videos }) => {
     }
   }, []);
 
+  // Handle progress bar change
   const handleProgressChange = (e) => {
     const value = parseFloat(e.target.value);
     const video = videoRefs.current[currentIndex];
@@ -347,6 +205,7 @@ const ImageCarousel = ({ images, videos }) => {
     }
   };
 
+  // Toggle mute
   const handleToggleMute = () => {
     const video = videoRefs.current[currentIndex];
     if (video) {
@@ -355,6 +214,7 @@ const ImageCarousel = ({ images, videos }) => {
     }
   };
 
+  // Intersection Observer to pause video when not visible
   useEffect(() => {
     if (!carouselRef.current) return;
 
@@ -390,6 +250,7 @@ const ImageCarousel = ({ images, videos }) => {
     };
   }, [currentIndex, media, clearProgressInterval]);
 
+  // Handle scroll events to pause videos
   useEffect(() => {
     const handleScroll = () => {
       if (!isInViewportRef.current && isVideo(media[currentIndex])) {
@@ -402,6 +263,7 @@ const ImageCarousel = ({ images, videos }) => {
       }
     };
 
+    // Throttle scroll events
     const throttledScroll = () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
@@ -425,8 +287,10 @@ const ImageCarousel = ({ images, videos }) => {
     };
   }, [currentIndex, media, clearProgressInterval]);
 
+  // Handle keyboard navigation - FIXED: Check if user is typing in input/textarea
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Check if user is typing in an input, textarea, or contenteditable
       const activeElement = document.activeElement;
       const isTyping = activeElement && (
         activeElement.tagName === 'INPUT' || 
@@ -434,8 +298,12 @@ const ImageCarousel = ({ images, videos }) => {
         activeElement.isContentEditable
       );
       
-      if (isTyping) return;
+      // If user is typing in an input field, don't handle keyboard shortcuts
+      if (isTyping) {
+        return;
+      }
       
+      // Only handle keyboard events when not typing
       if (e.key === 'ArrowLeft') prevSlide();
       if (e.key === 'ArrowRight') nextSlide();
       if (e.key === ' ' || e.key === 'Spacebar') {
@@ -460,8 +328,10 @@ const ImageCarousel = ({ images, videos }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [prevSlide, nextSlide, currentIndex, media, handleVideoPlayPause, clearProgressInterval]);
 
+  // Clean up when component unmounts
   useEffect(() => {
     return () => {
+      // Clean up video refs
       videoRefs.current.forEach(video => {
         if (video) {
           video.pause();
@@ -470,18 +340,22 @@ const ImageCarousel = ({ images, videos }) => {
         }
       });
       
+      // Clear intervals
       clearProgressInterval();
       
+      // Clean up observer
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
       
+      // Clear scroll timeout
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
   }, [clearProgressInterval]);
 
+  // Clean up video interval when slide changes
   useEffect(() => {
     return () => {
       clearProgressInterval();
@@ -513,18 +387,21 @@ const ImageCarousel = ({ images, videos }) => {
                 ref={el => {
                   videoRefs.current[currentIndex] = el;
                   if (el) {
+                    // Clean up previous event listeners
                     el.onplay = null;
                     el.onpause = null;
                     el.onended = null;
                     el.ontimeupdate = null;
                     el.onloadedmetadata = null;
                     
+                    // Add new event listeners
                     el.onplay = handleVideoPlay;
                     el.onpause = handleVideoPause;
                     el.onended = handleVideoEnded;
                     el.ontimeupdate = handleVideoTimeUpdate;
                     el.onloadedmetadata = handleVideoLoadedMetadata;
                     
+                    // Set video attributes
                     el.muted = false;
                     el.playsInline = true;
                     el.preload = "metadata";
@@ -669,10 +546,6 @@ function Feed() {
   const [rsvpLoading, setRsvpLoading] = useState({});
   const [voteLoading, setVoteLoading] = useState({});
   
-  const [sharePost, setSharePost] = useState(null);
-  const [showSharePopup, setShowSharePopup] = useState(false);
-  const [shareCounts, setShareCounts] = useState({});
-  
   const navigate = useNavigate();
   const location = useLocation();
   const hasCheckedHighlightRef = useRef(false);
@@ -681,6 +554,7 @@ function Feed() {
   const highlightTimeoutRef = useRef(null);
   const lastHighlightTimeRef = useRef(0);
 
+  // Cleanup preview URLs
   useEffect(() => {
     return () => {
       mediaPreviews.forEach(preview => {
@@ -691,6 +565,7 @@ function Feed() {
     };
   }, [mediaPreviews]);
 
+  // Block ALL alerts
   useEffect(() => {
     const originalAlert = window.alert;
     window.alert = function(msg) {
@@ -703,6 +578,7 @@ function Feed() {
     };
   }, []);
 
+  // Listen for custom events from ExploreSearch
   useEffect(() => {
     console.log("🎯 [Feed] Setting up event listeners");
     
@@ -768,6 +644,7 @@ function Feed() {
     };
   }, []);
 
+  // Combined scroll and highlight function
   const scrollAndHighlightPost = useCallback((postId) => {
     if (!postId || isProcessingRef.current) {
       console.log("⏭️ [Feed] No post ID or already processing");
@@ -853,6 +730,7 @@ function Feed() {
     }, 300);
   }, [setIsProcessingHighlight]);
 
+  // Fetch posts with highlighted post handling
   const fetchPosts = useCallback(async (forceHighlight = false) => {
     if (isProcessingRef.current && !forceHighlight) {
       console.log("⏸️ [Feed] Already processing, skipping fetch");
@@ -955,6 +833,7 @@ function Feed() {
     }
   }, [navigate, scrollAndHighlightPost, setError, setIsProcessingHighlight, setPosts, setHighlightedPostId, setSearchPostData]);
 
+  // Main initialization effect
   useEffect(() => {
     console.log("🔍 [Feed] Component mounted or refreshTrigger changed", { refreshTrigger });
     
@@ -972,6 +851,7 @@ function Feed() {
     isProcessingRef.current = false;
     fetchPosts();
 
+    // SOCKET/NOTIFICATION LOGIC
     const socket = getSocket();
     if (socket) {
       socket.on("new_notification", (payload) => {
@@ -1006,6 +886,7 @@ function Feed() {
     };
   }, [navigate, refreshTrigger, fetchPosts]);
 
+  // Check URL for highlight parameters
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const highlightId = params.get('highlight');
@@ -1024,6 +905,7 @@ function Feed() {
     }
   }, [location, fetchPosts]);
 
+  // Handle scroll when posts are set
   useEffect(() => {
     if (highlightedPostId && posts.length > 0 && isProcessingHighlight) {
       console.log("🔄 [Feed] Posts updated, attempting to highlight:", highlightedPostId);
@@ -1043,36 +925,7 @@ function Feed() {
     }
   }, [posts, highlightedPostId, isProcessingHighlight, scrollAndHighlightPost]);
 
-  const handleShareClick = (post) => {
-    setSharePost(post);
-    setShowSharePopup(true);
-    
-    trackShareClick(post._id);
-  };
-
-  const trackShareClick = async (postId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5000/api/posts/${postId}/track-share`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      setShareCounts(prev => ({
-        ...prev,
-        [postId]: (prev[postId] || 0) + 1
-      }));
-    } catch (error) {
-      console.error('Error tracking share:', error);
-    }
-  };
-
-  const closeSharePopup = () => {
-    setShowSharePopup(false);
-    setSharePost(null);
-  };
+  // ==================== MEDIA UPLOAD FUNCTIONS ====================
 
   const handleFileSelect = (e) => {
     const files = e.target.files;
@@ -1111,6 +964,8 @@ function Feed() {
   const toggleMediaUploader = () => {
     setShowMediaUploader(!showMediaUploader);
   };
+
+  // ==================== EVENT AND POLL FUNCTIONS ====================
 
   const handleEventChange = (field, value) => {
     setEventData(prev => ({
@@ -1153,6 +1008,8 @@ function Feed() {
       }));
     }
   };
+
+  // ==================== POST CREATION ====================
 
   const handleCreatePost = async () => {
     console.log("🚀 [Feed] Post button clicked!");
@@ -1319,6 +1176,8 @@ function Feed() {
     console.log("🔄 Posts updated, new post count:", posts.length + 1);
   };
 
+  // ==================== POST INTERACTIONS ====================
+
   const handleEventRSVP = async (postId, status) => {
     if (!user) return;
 
@@ -1457,6 +1316,8 @@ function Feed() {
     }
   };
 
+  // ==================== POST DELETE FUNCTION ====================
+
   const handleDeletePost = async (postId) => {
     if (!window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
       return;
@@ -1484,6 +1345,7 @@ function Feed() {
     }
   };
 
+  // Report post function
   const handleReportPost = async (postId) => {
     const reason = prompt("Please provide reason for reporting this post (harassment, spam, inappropriate content, etc.):");
     
@@ -1525,12 +1387,14 @@ function Feed() {
     return post.likes?.includes(user?.id);
   };
 
+  // Check if user has RSVPed to an event
   const getUserRSVPStatus = (post) => {
     if (!post.event?.attendees || !user) return null;
     const userRSVP = post.event.attendees.find(a => a.userId === user.id);
     return userRSVP ? userRSVP.status : null;
   };
 
+  // Check if user has voted in a poll
   const getUserVoteStatus = (post) => {
     if (!post.poll?.voters || !user) return null;
     return post.poll.voters.find(v => v.userId === user.id);
@@ -1560,6 +1424,7 @@ function Feed() {
     setActiveCommentSection(activeCommentSection === postId ? null : postId);
   };
 
+  // Notification click handler
   const handleClickNotification = async () => {
     const token = localStorage.getItem("token");
 
@@ -1580,12 +1445,14 @@ function Feed() {
     navigate("/notifications");
   };
 
+  // Handler for user selected from search
   const handleUserSelectFromSearch = (selectedUser) => {
     if (selectedUser && selectedUser._id) {
         navigate(`/profile/${selectedUser._id}`); 
     }
   };
 
+  // Manual refresh function
   const handleManualRefresh = () => {
     console.log("🔄 [Feed] Manual refresh triggered");
     hasCheckedHighlightRef.current = false;
@@ -1593,6 +1460,9 @@ function Feed() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // ==================== RENDER FUNCTIONS ====================
+
+  // Render event card
   const renderEventCard = (event) => {
     if (!event) return null;
     
@@ -1653,6 +1523,7 @@ function Feed() {
     );
   };
 
+  // Render poll card
   const renderPollCard = (poll, postId) => {
     if (!poll) return null;
     
@@ -1717,9 +1588,11 @@ function Feed() {
     );
   };
 
+  // Updated renderMedia function to use carousel
   const renderMedia = (media) => {
     if (!media || media.length === 0) return null;
     
+    // Separate images and videos for the carousel
     const images = media.filter(item => item.type === 'image');
     const videos = media.filter(item => item.type === 'video');
     
@@ -1738,10 +1611,12 @@ function Feed() {
 
   return (
     <div className="feed-container">
+      {/* Header */}
       <header className="feed-header">
         <div className="header-left">
           <div className="logo" onClick={() => navigate("/feed")}>💼 CampusConnect</div>
           
+          {/* SEARCH BAR */}
           <div className="feed-search-wrapper">
              <ExploreSearch onUserSelect={handleUserSelectFromSearch} />
           </div>
@@ -1803,6 +1678,7 @@ function Feed() {
         </div>
       </header>
 
+      {/* Error/Success Notifications */}
       {error && (
         <div className="notification error">
           {error}
@@ -1816,10 +1692,7 @@ function Feed() {
         </div>
       )}
 
-      {showSharePopup && sharePost && (
-        <SocialSharePopup post={sharePost} onClose={closeSharePopup} />
-      )}
-
+      {/* Notification Panel */}
       {showNotifications && (
         <div className="notification-panel-overlay" onClick={() => setShowNotifications(false)}>
           <div className="notification-panel" onClick={(e) => e.stopPropagation()}>
@@ -1843,6 +1716,7 @@ function Feed() {
 
       <div className="feed-content">
         <div className="main-feed">
+          {/* User Welcome Card */}
           <div className="welcome-card">
             <div className="welcome-content">
               <div className="welcome-avatar">
@@ -1860,6 +1734,7 @@ function Feed() {
             </div>
           </div>
 
+          {/* Create Post Card */}
           <div className="create-post-card">
             <div className="post-input-section">
               <div className="user-avatar-small">
@@ -1880,6 +1755,7 @@ function Feed() {
               />
             </div>
             
+            {/* Event Creation Form */}
             {postType === 'event' && (
               <div className="event-form">
                 <div className="form-row">
@@ -1951,6 +1827,7 @@ function Feed() {
               </div>
             )}
             
+            {/* Poll Creation Form */}
             {postType === 'poll' && (
               <div className="poll-form">
                 <div className="form-group">
@@ -2002,6 +1879,7 @@ function Feed() {
               </div>
             )}
             
+            {/* Media Upload Section (only for text posts) */}
             {postType === 'text' && showMediaUploader && (
               <div className="media-upload-section">
                 <div className="media-preview-container">
@@ -2058,6 +1936,7 @@ function Feed() {
             
             <div className="post-actions">
               <div className="post-features" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                {/* Media upload button (only for text posts) */}
                 {postType === 'text' && (
                   <button 
                     className="feature-btn" 
@@ -2081,6 +1960,7 @@ function Feed() {
                   </button>
                 )}
                 
+                {/* Event Button */}
                 <button 
                   className="feature-btn" 
                   title="Create Event"
@@ -2102,6 +1982,7 @@ function Feed() {
                   📅 Event
                 </button>
                 
+                {/* Poll Button */}
                 <button 
                   className="feature-btn" 
                   title="Create Poll"
@@ -2123,6 +2004,7 @@ function Feed() {
                   📊 Poll
                 </button>
                 
+                {/* Hidden file input for media upload */}
                 <input
                   type="file"
                   id="media-upload-hidden"
@@ -2160,6 +2042,7 @@ function Feed() {
             </div>
           </div>
 
+          {/* Posts Feed */}
           <div className="posts-container">
             {posts.length === 0 ? (
               <div className="empty-state">
@@ -2245,6 +2128,7 @@ function Feed() {
                         </div>
                       </div>
                       <div className="post-actions-right">
+                        {/* Delete Button (only for owner or admin) */}
                         {(isOwner || user?.role === 'admin') && (
                           <button 
                             className="delete-post-btn"
@@ -2261,12 +2145,16 @@ function Feed() {
                     <div className="post-content">
                       <p>{post.content}</p>
                       
+                      {/* Display Event */}
                       {post.type === 'event' && post.event && renderEventCard(post.event)}
                       
+                      {/* Display Poll */}
                       {post.type === 'poll' && post.poll && renderPollCard(post.poll, post._id)}
                       
+                      {/* Display Media with LinkedIn-style Carousel */}
                       {post.media && post.media.length > 0 && renderMedia(post.media)}
                       
+                      {/* Legacy imageUrl support */}
                       {post.imageUrl && !post.media && (
                         <div className="post-image">
                           <img src={post.imageUrl} alt="Post content" />
@@ -2274,6 +2162,7 @@ function Feed() {
                       )}
                     </div>
 
+                    {/* Event RSVP Buttons */}
                     {post.type === 'event' && post.event && (
                       <div className="event-actions">
                         {userRSVPStatus === 'going' ? (
@@ -2308,9 +2197,6 @@ function Feed() {
                       <span className="stat-item">
                         💬 {post.comments?.length || 0}
                       </span>
-                      <span className="stat-item">
-                        🔄 {shareCounts[post._id] || 0}
-                      </span>
                       {post.type === 'event' && post.event && (
                         <span className="stat-item">
                           👥 {post.event.rsvpCount || 0}
@@ -2341,10 +2227,7 @@ function Feed() {
                       >
                         💬 Comment
                       </button>
-                      <button 
-                        className="action-btn share-btn"
-                        onClick={() => handleShareClick(post)}
-                      >
+                      <button className="action-btn share-btn">
                         🔄 Share
                       </button>
                       <button 
@@ -2356,8 +2239,10 @@ function Feed() {
                       </button>
                     </div>
 
+                    {/* Comments Section */}
                     {activeCommentSection === post._id && (
                       <div className="comments-section">
+                        {/* Display Existing Comments */}
                         {post.comments && post.comments.length > 0 && (
                           <div className="comments-list">
                             <h4>Comments ({post.comments.length})</h4>
@@ -2380,6 +2265,7 @@ function Feed() {
                           </div>
                         )}
 
+                        {/* Add Comment */}
                         <div className="add-comment">
                           <div className="comment-avatar-small">
                             {getUserAvatar(user)}
@@ -2409,7 +2295,9 @@ function Feed() {
           </div>
         </div>
 
+        {/* Sidebar */}
         <div className="sidebar">
+          {/* User Profile Card */}
           <div className="sidebar-card user-profile-card">
             <div className="profile-header">
               <div className="profile-avatar">
@@ -2429,8 +2317,6 @@ function Feed() {
                   <span>{posts.filter(p => p.user?.id === user.id).length} posts</span>
                   <span>•</span>
                   <span>{(posts.reduce((acc, post) => acc + (post.likes?.length || 0), 0))} likes</span>
-                  <span>•</span>
-                  <span>{(Object.values(shareCounts).reduce((a, b) => a + b, 0))} shares</span>
                 </div>
               </div>
             </div>
@@ -2458,12 +2344,13 @@ function Feed() {
                 <span>Total Likes</span>
               </div>
               <div className="stat">
-                <strong>{(Object.values(shareCounts).reduce((a, b) => a + b, 0))}</strong>
-                <span>Total Shares</span>
+                <strong>{(posts.reduce((acc, post) => acc + (post.comments?.length || 0), 0))}</strong>
+                <span>Total Comments</span>
               </div>
             </div>
           </div>
 
+          {/* Upcoming Events Sidebar */}
           {posts.filter(post => post.type === 'event' && post.event).length > 0 && (
             <div className="sidebar-card">
               <h3>📅 Upcoming Events</h3>
@@ -2492,6 +2379,7 @@ function Feed() {
             </div>
           )}
 
+          {/* Active Polls Sidebar */}
           {posts.filter(post => post.type === 'poll' && post.poll).length > 0 && (
             <div className="sidebar-card">
               <h3>📊 Active Polls</h3>
@@ -2515,6 +2403,7 @@ function Feed() {
         </div>
       </div>
       
+      {/* Toast Component */}
       <Toast
         notification={toastData}
         onClose={() => setToastData(null)}
