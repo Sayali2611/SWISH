@@ -20,6 +20,7 @@ function Register() {
     facultyDepartment: "",
     designation: "",
     adminCode: "",
+    isPrivate: false,
     bio: ""
   });
   const [loading, setLoading] = useState(false);
@@ -108,6 +109,7 @@ function Register() {
       submitData.append('contact', formData.contact);
       submitData.append('role', formData.role);
       submitData.append('bio', formData.bio || "Campus community member");
+      submitData.append('isPrivate', formData.isPrivate);
       
       if (formData.profilePhoto) {
         submitData.append('profilePhoto', formData.profilePhoto);
@@ -387,9 +389,48 @@ function Register() {
                       rows="3"
                     />
                   </div>
-                </div>
+                       {/* 👇 ADD THIS NEW FIELD */}
+      <div className="input-group full-width">
+        <label>Account Privacy</label>
+        <div className="privacy-toggle">
+          <label className="privacy-option">
+            <input 
+              type="radio"
+              name="privacy"
+              value="public"
+              checked={formData.isPrivate === false}
+              onChange={() => setFormData({...formData, isPrivate: false})}
+            />
+            <div className="privacy-content">
+              <span className="privacy-icon">🌍</span>
+              <div>
+                <div className="privacy-title">Public Account</div>
+                <div className="privacy-desc">Anyone can see your posts and profile</div>
               </div>
-            )}
+            </div>
+          </label>
+          
+          <label className="privacy-option">
+            <input 
+              type="radio"
+              name="privacy"
+              value="private"
+              checked={formData.isPrivate === true}
+              onChange={() => setFormData({...formData, isPrivate: true})}
+            />
+            <div className="privacy-content">
+              <span className="privacy-icon">🔒</span>
+              <div>
+                <div className="privacy-title">Private Account</div>
+                <div className="privacy-desc">Only accepted connections can see your posts</div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
             {/* STEP 2: ROLE SELECTION */}
             {step === 2 && (

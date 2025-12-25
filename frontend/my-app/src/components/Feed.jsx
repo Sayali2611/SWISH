@@ -18,6 +18,7 @@ const ImageCarousel = ({ images, videos }) => {
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   
+  
   const videoRefs = useRef([]);
   const carouselRef = useRef(null);
   const observerRef = useRef(null);
@@ -505,6 +506,7 @@ const ImageCarousel = ({ images, videos }) => {
 };
 
 function Feed() {
+  
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState("");
   const [loading, setLoading] = useState(false);
@@ -530,6 +532,10 @@ function Feed() {
   const [showMediaUploader, setShowMediaUploader] = useState(false);
   
   const [postType, setPostType] = useState('text');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [reportReason, setReportReason] = useState("");
+
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -1345,37 +1351,47 @@ function Feed() {
     }
   };
 
-  // Report post function
-  const handleReportPost = async (postId) => {
-    const reason = prompt("Please provide reason for reporting this post (harassment, spam, inappropriate content, etc.):");
+  // Report post function - NEW WITH DROPDOWN
+const handleReportPost = async (postId) => {
+  // Open modal
+  setSelectedPostId(postId);
+  setShowReportModal(true);
+  setReportReason(""); // Reset reason
+};
+
+// New function to submit the report
+const handleSubmitReport = async () => {
+  if (!selectedPostId || !reportReason.trim()) {
+    setError("Please select a reason for reporting");
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${selectedPostId}/report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ reason: reportReason })
+    });
+
+    const data = await response.json();
     
-    if (!reason || !reason.trim()) {
-      return;
+    if (response.ok) {
+      setSuccess('✅ Post reported successfully! Admin will review it.');
+      setTimeout(() => setSuccess(""), 3000);
+      setShowReportModal(false);
+      setSelectedPostId(null);
+      setReportReason("");
+    } else {
+      setError(data.message || 'Failed to report post');
     }
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ reason })
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        setSuccess('✅ Post reported successfully! Admin will review it.');
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        setError(data.message || 'Failed to report post');
-      }
-    } catch (error) {
-      setError('Network error');
-    }
-  };
+  } catch (error) {
+    setError('Network error');
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -2105,6 +2121,9 @@ function Feed() {
                         <div className="user-info">
                           <div className="user-name">
                             {post.user?.name || "Unknown User"}
+                             {post.user?.isPrivate && (
+                              <span className="private-badge" title="Private Account"> 🔒</span>
+                            )}
                             {post.user?.role === 'faculty' && (
                               <span className="verified-badge" title="Faculty Member"> 👨‍🏫</span>
                             )}
@@ -2231,12 +2250,11 @@ function Feed() {
                         🔄 Share
                       </button>
                       <button 
-                        className="action-btn report-btn"
-                        onClick={() => handleReportPost(post._id)}
-                        title="Report inappropriate content"
-                      >
-                        🚨 Report
-                      </button>
+                      className="action-btn report-btn"
+                      onClick={() => handleReportPost(post._id)}  // This calls the new function
+                      title="Report inappropriate content">
+                      🚨 Report
+                    </button>
                     </div>
 
                     {/* Comments Section */}
@@ -2402,6 +2420,72 @@ function Feed() {
           )}
         </div>
       </div>
+
+            {/* Report Modal - ADD THIS RIGHT HERE */}
+      {showReportModal && (
+        <div className="report-modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="report-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="report-modal-header">
+              <h3>🚨 Report Post</h3>
+              <button className="close-report-btn" onClick={() => setShowReportModal(false)}>×</button>
+            </div>
+            
+            <div className="report-modal-content">
+              <p className="report-instruction">Why are you reporting this post?</p>
+              
+              <div className="report-reasons-list">
+                <select 
+                  className="report-reason-select"
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                >
+                  <option value="">Select a reason</option>
+                  <option value="spam">Spam or misleading content</option>
+                  <option value="harassment">Harassment or bullying</option>
+                  <option value="hate_speech">Hate speech or symbols</option>
+                  <option value="nudity">Nudity or sexual content</option>
+                  <option value="violence">Violence or dangerous content</option>
+                  <option value="copyright">Copyright violation</option>
+                  <option value="fake_news">Fake news or misinformation</option>
+                  <option value="self_harm">Self-harm or suicide content</option>
+                  <option value="scam">Scam or fraud</option>
+                  <option value="other">Other (please specify)</option>
+                </select>
+                
+                {reportReason === 'other' && (
+                  <textarea
+                    className="report-custom-reason"
+                    placeholder="Please describe the issue..."
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    rows="3"
+                  />
+                )}
+              </div>
+              
+              <div className="report-modal-actions">
+                <button 
+                  className="cancel-report-btn"
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setSelectedPostId(null);
+                    setReportReason("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="submit-report-btn"
+                  onClick={handleSubmitReport}
+                  disabled={!reportReason.trim()}
+                >
+                  Submit Report
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Toast Component */}
       <Toast
@@ -2413,6 +2497,8 @@ function Feed() {
           setShowNotifications(true);
         }}
       />
+
+      
     </div>
   );
 }

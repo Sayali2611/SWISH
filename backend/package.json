@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.cjs",
-    "dev": "nodemon server.cjs"
-  },
+  "start": "node server.js",
+  "dev": "nodemon server.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

@@ -47,6 +47,10 @@ const UserSchema = new mongoose.Schema({
     default: 'Passionate about technology and innovation.',
     maxlength: 500
   },
+  isPrivate: { // 👈 ADD THIS NEW FIELD
+  type: Boolean,
+  default: false 
+  },
   skills: [{
     type: String,
     trim: true

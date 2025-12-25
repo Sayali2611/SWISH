@@ -2063,3 +2063,155 @@ select.profile-input {
     grid-template-columns: 1fr;
   }
 }
+/* ==================== PRIVACY SETTINGS ==================== */
+
+.privacy-section {
+  padding: 20px 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+}
+
+.privacy-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.privacy-toggle-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.privacy-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+}
+
+.privacy-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.privacy-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #e2e8f0;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.privacy-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+.privacy-switch input:checked + .privacy-slider {
+  background-color: #4f46e5;
+}
+
+.privacy-switch input:checked + .privacy-slider:before {
+  transform: translateX(30px);
+}
+
+.privacy-info {
+  flex: 1;
+}
+
+.privacy-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.privacy-description {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* For Register Page Privacy Toggle */
+.privacy-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.privacy-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.privacy-option:hover {
+  border-color: #c7d2fe;
+  background: #f8fafc;
+}
+
+.privacy-option input[type="radio"]:checked + .privacy-content {
+  border-color: #4f46e5;
+  background: rgba(79, 70, 229, 0.05);
+}
+
+.privacy-option input[type="radio"] {
+  display: none;
+}
+
+.privacy-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.privacy-icon {
+  font-size: 28px;
+}
+
+.privacy-option:nth-child(1) .privacy-icon {
+  color: #10b981;
+}
+
+.privacy-option:nth-child(2) .privacy-icon {
+  color: #64748b;
+}
+
+.privacy-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.privacy-desc {
+  font-size: 14px;
+  color: #64748b;
+}

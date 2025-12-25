@@ -14,27 +14,58 @@ const generateToken = (id) => {
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { 
+    console.log("=".repeat(50));
+    console.log("🚨 DEBUG REGISTRATION START");
+    console.log("=".repeat(50));
+    
+    // Log EVERYTHING in request
+    console.log("📦 Full req.body:", JSON.stringify(req.body, null, 2));
+    console.log("📦 req.body type:", typeof req.body);
+    console.log("📦 req.body keys:", Object.keys(req.body));
+    
+    // Check isPrivate specifically
+    const hasIsPrivate = 'isPrivate' in req.body;
+    console.log("🔍 Does req.body have 'isPrivate'?", hasIsPrivate);
+    console.log("🔍 req.body.isPrivate value:", req.body.isPrivate);
+    console.log("🔍 req.body.isPrivate type:", typeof req.body.isPrivate);
+    
+    // Get all fields
+    const {
       name, email, password, contact, role,
       studentId, department, year,
       employeeId, facultyDepartment, designation,
-      adminCode
+      adminCode, bio
     } = req.body;
+
+    // Check ALL values
+    console.log("📝 Name:", name);
+    console.log("📝 Email:", email);
+    console.log("📝 Role:", role);
+    console.log("📝 Raw isPrivate from form:", req.body.isPrivate);
+    
+    // Convert isPrivate
+    let isPrivate = req.body.isPrivate;
+    console.log("🔒 Raw isPrivate:", isPrivate);
+    console.log("🔒 isPrivate === 'true':", isPrivate === 'true');
+    console.log("🔒 isPrivate === true:", isPrivate === true);
+    
+    if (isPrivate === 'true' || isPrivate === true) {
+      isPrivate = true;
+    } else {
+      isPrivate = false;
+    }
+    
+    console.log("✅ Final isPrivate (boolean):", isPrivate);
+    console.log("✅ Final isPrivate type:", typeof isPrivate);
 
     // Check if user exists
     const userExists = await User.findOne({ email });
+    console.log("👤 User exists check:", userExists ? "YES" : "NO");
+    
     if (userExists) {
       return res.status(400).json({
         success: false,
         message: 'User already exists with this email'
-      });
-    }
-
-    // Admin verification
-    if (role === 'admin' && adminCode !== "CAMPUS2024") {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid admin access code'
       });
     }
 
@@ -44,32 +75,31 @@ const registerUser = async (req, res) => {
       email,
       password,
       contact,
-      role
+      role,
+      isPrivate, // 👈 THIS SHOULD BE TRUE/FALSE
+      bio: bio || "Campus community member"
     };
+    
+    console.log("💾 User data to save:", JSON.stringify(userData, null, 2));
 
-    // Add role-specific fields
-    if (role === 'student') {
-      userData.studentId = studentId;
-      userData.department = department;
-      userData.year = year;
-    } else if (role === 'faculty') {
-      userData.employeeId = employeeId;
-      userData.facultyDepartment = facultyDepartment;
-      userData.designation = designation;
-    } else if (role === 'admin') {
-      userData.adminCode = adminCode;
-    }
-
-    // Hash password before creating user
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     userData.password = await bcrypt.hash(userData.password, salt);
 
     // Create user
     const user = await User.create(userData);
+    console.log("🎉 User created successfully!");
+    console.log("🎉 User ID:", user._id);
+    console.log("🎉 User isPrivate from DB:", user.isPrivate);
+    console.log("🎉 User isPrivate type from DB:", typeof user.isPrivate);
 
     // Generate token
     const token = generateToken(user._id);
 
+    console.log("=".repeat(50));
+    console.log("✅ REGISTRATION COMPLETE");
+    console.log("=".repeat(50));
+    
     res.status(201).json({
       success: true,
       message: 'User registered successfully!',
@@ -79,17 +109,16 @@ const registerUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        department: user.department || user.facultyDepartment,
-        profilePhoto: user.profilePhoto
+        isPrivate: user.isPrivate, // Send back
+        bio: user.bio
       }
     });
 
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('❌ Registration error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during registration',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Server error during registration'
     });
   }
 };
@@ -122,6 +151,7 @@ const loginUser = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
+    // IMPORTANT: Include isPrivate in response
     res.json({
       success: true,
       message: 'Login successful!',
@@ -140,6 +170,7 @@ const loginUser = async (req, res) => {
         employeeId: user.employeeId,
         designation: user.designation,
         profilePhoto: user.profilePhoto,
+        isPrivate: Boolean(user.isPrivate), // ✅ BEST
         createdAt: user.createdAt
       }
     });
@@ -185,11 +216,9 @@ const getProfile = async (req, res) => {
 // @access  Private
 const updateProfile = async (req, res) => {
   try {
-    // SAFETY CHECK for req.body
     const updates = req.body || {};
     const userId = req.user.id;
 
-    // Check if updates object is empty
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
         success: false,
@@ -201,7 +230,12 @@ const updateProfile = async (req, res) => {
     delete updates.email;
     delete updates.password;
 
-    // Parse skills if it's a string
+    // Handle isPrivate conversion
+    if (updates.isPrivate !== undefined) {
+      updates.isPrivate = Boolean(updates.isPrivate);
+    }
+
+    // Parse skills if string
     if (updates.skills && typeof updates.skills === 'string') {
       try {
         updates.skills = JSON.parse(updates.skills);
@@ -238,32 +272,25 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// 🚀 NEW FUNCTION: Search Users
-// @desc    Search for users by name
+// @desc    Search users
 // @route   GET /api/users/search
 // @access  Private
 const searchUsers = async (req, res) => {
   try {
-    // The frontend sends the search query as 'name' in the URL query parameters
-    const { name } = req.query; 
+    const { name } = req.query;
 
     if (!name || name.trim().length === 0) {
       return res.status(400).json({ message: 'Search term is required' });
     }
 
-    // Create a case-insensitive regex for the search term (partial match)
-    // The 'i' option makes the search case-insensitive
     const searchRegex = new RegExp(name, 'i');
 
-    // Find users where name matches, excluding the current user
     const users = await User.find({
       name: { $regex: searchRegex },
-      // Exclude the user performing the search
-      _id: { $ne: req.user.id } 
+      _id: { $ne: req.user.id }
     })
-    // Select only the necessary fields for the search results display
-    .select('name email profilePhoto role department facultyDepartment')
-    .limit(10); // Limit results for better performance
+    .select('name email profilePhoto role department facultyDepartment isPrivate')
+    .limit(10);
 
     res.json(users);
 
@@ -281,5 +308,5 @@ module.exports = {
   loginUser,
   getProfile,
   updateProfile,
-  searchUsers // 👈 Export the new function
+  searchUsers
 };

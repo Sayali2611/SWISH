@@ -281,7 +281,9 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
       name, email, password, role, contact,
       studentId, department, year,
       employeeId, facultyDepartment, designation,
-      adminCode
+      adminCode,
+      bio, // Add this
+      isPrivate = false
     } = req.body;
 
     // Validate university email
@@ -327,6 +329,7 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
       role: role || 'student',
       profilePhoto: profilePhotoUrl,
       bio: 'Passionate about technology and innovation. Always eager to learn and grow.',
+      isPrivate: isPrivate === 'true' || isPrivate === true,
       skills: ["JavaScript", "React", "Node.js", "Python"],
       campus: 'SIGCE Campus',
       followers: [],
@@ -374,6 +377,7 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
       role: user.role,
       profilePhoto: user.profilePhoto,
       bio: user.bio,
+      isPrivate: user.isPrivate, 
       skills: user.skills,
       campus: user.campus,
       // NEW NETWORK FIELDS WITH UPDATED NAMES
@@ -438,6 +442,7 @@ app.post("/api/auth/login", async (req, res) => {
       role: user.role,
       profilePhoto: user.profilePhoto,
       bio: user.bio,
+      isPrivate: Boolean(user.isPrivate),
       skills: user.skills || [],
       campus: user.campus,
       // NEW NETWORK FIELDS WITH UPDATED NAMES
@@ -529,6 +534,7 @@ app.get("/api/auth/profile", auth, async (req, res) => {
     const userResponse = { ...user };
     delete userResponse.password;
     userResponse.id = userResponse._id;
+    userResponse.isPrivate = Boolean(userResponse.isPrivate);
 
     // Ensure network fields exist with updated names
     userResponse.sentRequests = userResponse.sentRequests || [];
@@ -554,7 +560,8 @@ app.put("/api/auth/profile", auth, async (req, res) => {
       year,
       employeeId,
       facultyDepartment,
-      designation
+      designation,
+      isPrivate 
     } = req.body;
 
     const userId = req.user.userId;
@@ -566,6 +573,7 @@ app.put("/api/auth/profile", auth, async (req, res) => {
     if (name) updateData.name = name;
     if (contact !== undefined) updateData.contact = contact;
     if (bio !== undefined) updateData.bio = bio;
+    if (isPrivate !== undefined) updateData.isPrivate = isPrivate === 'true' || isPrivate === true;
     if (skills) {
       try {
         updateData.skills = typeof skills === 'string' ? JSON.parse(skills) : skills;
@@ -1003,45 +1011,182 @@ app.put("/api/posts/:id", auth, async (req, res) => {
   }
 });
 
-// Get all posts (updated to include type, event, and poll)
 app.get("/api/posts", auth, async (req, res) => {
   try {
-    console.log("📥 GETTING ALL POSTS...");
+    const currentUserId = req.user.userId;
     
-    const posts = await db.collection('posts').find().sort({ createdAt: -1 }).toArray();
-    
-    console.log(`Found ${posts.length} posts`);
-    
-    const postsWithUsers = await Promise.all(
-      posts.map(async (post) => {
-        const user = await db.collection('users').findOne({ _id: new ObjectId(post.userId) });
-        return {
-          _id: post._id,
-          content: post.content,
-          type: post.type || 'text',
-          media: post.media || [],
-          likes: post.likes || [],
-          comments: post.comments || [],
-          event: post.event || null,
-          poll: post.poll || null,
-          createdAt: post.createdAt,
-          user: {
-            id: user?._id,
-            name: user?.name || "Unknown User",
-            profilePhoto: user?.profilePhoto,
-            role: user?.role,
-            department: user?.department
-          }
-        };
-      })
+    // Get current user's connections for privacy filtering
+    const currentUser = await db.collection('users').findOne(
+      { _id: new ObjectId(currentUserId) },
+      { projection: { connections: 1 } }
     );
-
-    res.json(postsWithUsers);
+    
+    const userConnections = currentUser?.connections || [];
+    
+    // Get all posts sorted by latest first
+    const allPosts = await db.collection('posts').find().sort({ createdAt: -1 }).toArray();
+    
+    console.log(`📊 Total posts in database: ${allPosts.length}`);
+    
+    // Arrays to categorize posts
+    let connectionPosts = [];
+    let publicNonConnectionPosts = [];
+    let privateNonConnectionPosts = [];
+    let ownPosts = [];
+    
+    // Get all users in posts to check their privacy
+    const uniqueUserIds = [...new Set(allPosts.map(p => p.userId.toString()))];
+    const userPrivacyMap = {};
+    
+    for (const userId of uniqueUserIds) {
+      const user = await db.collection('users').findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { name: 1, isPrivate: 1 } }
+      );
+      
+      if (user) {
+        userPrivacyMap[userId] = {
+          name: user.name,
+          isPrivate: Boolean(user.isPrivate),
+          isConnection: userConnections.includes(userId),
+          isCurrentUser: userId === currentUserId
+        };
+      }
+    }
+    
+    // Process each post
+    for (const post of allPosts) {
+      const postUserIdStr = post.userId.toString();
+      const userInfo = userPrivacyMap[postUserIdStr];
+      
+      if (!userInfo) continue;
+      
+      const { name, isPrivate, isConnection, isCurrentUser } = userInfo;
+      
+      // Skip own posts (don't show in feed)
+      if (isCurrentUser) {
+        ownPosts.push(post);
+        continue;
+      }
+      
+      // Prepare post with user info
+      const postWithUser = {
+        ...post,
+        user: {
+          id: post.userId,
+          name: name,
+          profilePhoto: null,
+          role: 'user',
+          department: '',
+          isPrivate: isPrivate
+        }
+      };
+      
+      // Check if viewable and categorize
+      if (!isPrivate) {
+        // Public user
+        if (isConnection) {
+          connectionPosts.push(postWithUser);
+        } else {
+          publicNonConnectionPosts.push(postWithUser);
+        }
+      } else if (isConnection) {
+        // Private user but connected
+        connectionPosts.push(postWithUser);
+      } else {
+        // Private non-connection - cannot view
+        privateNonConnectionPosts.push(post);
+      }
+    }
+    
+    console.log(`📊 Categorized posts:
+      Own posts: ${ownPosts.length}
+      Connection posts: ${connectionPosts.length}
+      Public non-connection posts: ${publicNonConnectionPosts.length}
+      Private non-connection posts (hidden): ${privateNonConnectionPosts.length}`);
+    
+    // ==================== 70-30 ALGORITHM ====================
+    
+    // Combine all viewable posts
+    const allViewablePosts = [...publicNonConnectionPosts, ...connectionPosts];
+    
+    // If few posts, just show all mixed by time
+    if (allViewablePosts.length <= 20) {
+      allViewablePosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      console.log(`✅ Showing ALL ${allViewablePosts.length} posts (few available)`);
+      
+      const finalPosts = await addUserDetails(allViewablePosts);
+      return res.json(finalPosts);
+    }
+    
+    // Calculate 70-30 targets
+    const totalVisible = allViewablePosts.length;
+    const targetPublicCount = Math.floor(totalVisible * 0.7);
+    const targetConnectionCount = Math.floor(totalVisible * 0.3);
+    
+    // Take required posts (already sorted by time)
+    const selectedPublicPosts = publicNonConnectionPosts.slice(0, targetPublicCount);
+    const selectedConnectionPosts = connectionPosts.slice(0, targetConnectionCount);
+    
+    // ==================== MIX POSTS BY TIME ====================
+    
+    const mixedPosts = [];
+    let publicIndex = 0;
+    let connectionIndex = 0;
+    
+    // Mix in ratio: 2-3 public posts, then 1 connection post
+    while (publicIndex < selectedPublicPosts.length || connectionIndex < selectedConnectionPosts.length) {
+      // Add 2-3 public posts
+      const publicBatch = Math.min(2 + Math.floor(Math.random() * 2), selectedPublicPosts.length - publicIndex);
+      for (let i = 0; i < publicBatch && publicIndex < selectedPublicPosts.length; i++) {
+        mixedPosts.push(selectedPublicPosts[publicIndex]);
+        publicIndex++;
+      }
+      
+      // Add 1 connection post
+      if (connectionIndex < selectedConnectionPosts.length) {
+        mixedPosts.push(selectedConnectionPosts[connectionIndex]);
+        connectionIndex++;
+      }
+    }
+    
+    // Final sort by time (newest first)
+    mixedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    console.log(`✅ Final feed: ${mixedPosts.length} posts
+      (${publicIndex} public + ${connectionIndex} connections)
+      Ratio: ${Math.round((publicIndex/mixedPosts.length)*100)}% public, ${Math.round((connectionIndex/mixedPosts.length)*100)}% connections`);
+    
+    // Add full user details
+    const finalPosts = await addUserDetails(mixedPosts);
+    
+    res.json(finalPosts);
+    
   } catch (error) {
     console.error("Error fetching posts:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+// Helper function to add user details
+async function addUserDetails(posts) {
+  return Promise.all(
+    posts.map(async (post) => {
+      const user = await db.collection('users').findOne({ _id: new ObjectId(post.userId) });
+      return {
+        ...post,
+        user: {
+          id: user?._id,
+          name: user?.name || "Unknown User",
+          profilePhoto: user?.profilePhoto,
+          role: user?.role,
+          department: user?.department || user?.facultyDepartment,
+          isPrivate: Boolean(user?.isPrivate)
+        }
+      };
+    })
+  );
+}
 
 // ==================== EVENT RSVP ROUTE ====================
 

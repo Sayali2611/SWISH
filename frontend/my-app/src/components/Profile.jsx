@@ -78,7 +78,8 @@ function Profile() {
       employeeId: userObj.employeeId || "",
       facultyDepartment: userObj.facultyDepartment || "",
       designation: userObj.designation || "",
-      profilePhoto: userObj.profilePhoto || null
+      profilePhoto: userObj.profilePhoto || null,
+      isPrivate: userObj.isPrivate || false
     });
 
     if (userObj.profilePhoto) {
@@ -316,7 +317,8 @@ function Profile() {
         employeeId: formData.employeeId,
         facultyDepartment: formData.facultyDepartment,
         designation: formData.designation,
-        profilePhoto: photoUrl
+        profilePhoto: photoUrl,
+        isPrivate: formData.isPrivate
       };
 
       const response = await fetch('http://localhost:5000/api/auth/profile', {
@@ -332,7 +334,7 @@ function Profile() {
 
       if (response.ok) {
         // Update local storage with new user data
-        const updatedUser = { ...user, ...formData, profilePhoto: photoUrl };
+        const updatedUser = { ...user, ...formData, profilePhoto: photoUrl ,isPrivate: formData.isPrivate };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         setIsEditing(false);
@@ -1088,7 +1090,8 @@ const handleSaveEdit = async () => {
                         employeeId: user.employeeId || "",
                         facultyDepartment: user.facultyDepartment || "",
                         designation: user.designation || "",
-                        profilePhoto: user.profilePhoto || null
+                        profilePhoto: user.profilePhoto || null,
+                        isPrivate: Boolean(user.isPrivate) 
                       });
                       setPhotoPreview(user.profilePhoto || null);
                     }}
@@ -1343,6 +1346,33 @@ const handleSaveEdit = async () => {
                   </div>
                 </>
               )}
+
+              {/* 👇 ADD PRIVACY TOGGLE RIGHT HERE 👇 */}
+              <div className="input-group full-width">
+                <label>Account Privacy</label>
+                <div className="privacy-toggle-profile">
+                  <label className="privacy-switch">
+                    <input
+                      type="checkbox"
+                      checked={formData.isPrivate || false}
+                      onChange={(e) => setFormData({...formData, isPrivate: e.target.checked})}
+                      disabled={!isEditing}
+                    />
+                    <span className="privacy-slider"></span>
+                  </label>
+                  <div className="privacy-info">
+                    <div className="privacy-title">
+                      {formData.isPrivate ? '🔒 Private Account' : '🌍 Public Account'}
+                    </div>
+                    <div className="privacy-description">
+                      {formData.isPrivate 
+                        ? 'Only your connections can see your posts'
+                        : 'Anyone can see your posts'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
