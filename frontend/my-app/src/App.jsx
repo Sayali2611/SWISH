@@ -10,6 +10,7 @@ import IncomingRequests from "./components/IncomingRequests";
 import Connections from "./components/Connections";            
 import "./styles/global.css";
 import ProfilePage from "./components/ProfilePage";
+import Explore from "./components/Explore";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="/requests" element={<IncomingRequests />} />   
         <Route path="/connections" element={<Connections />} />     
         <Route path="/profile/:userId" element={<ProfilePage />} />
+        <Route path="/explore" element={<Explore />} />
       </Routes>
     </Router>
   );

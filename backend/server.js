@@ -9,6 +9,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const exploreRoutes = require('./routes/exploreRoutes');
 
 require("dotenv").config();
 
@@ -22,6 +23,9 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 5000;
+
+// Make db globally available
+global.db = null;
 
 // Middleware
 app.use(express.json());
@@ -135,12 +139,30 @@ const postMediaUpload = multer({
 
 // MongoDB connection
 let db;
+let mongoClient;
 const connectDB = async () => {
   try {
-    const client = new MongoClient(process.env.MONGODB_URI);
-    await client.connect();
-    db = client.db('swish');
+    mongoClient = new MongoClient(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      retryWrites: true,
+      retryReads: true,
+    });
+    
+    await mongoClient.connect();
+    db = mongoClient.db('swish');
+    
+    // Set global db for access in other modules
+    global.db = db;
+    
     console.log("✅ MongoDB connected successfully to Atlas");
+    
+    // Debug logging
+    console.log("🔍 DEBUG: db variable type:", typeof db);
+    console.log("🔍 DEBUG: global.db set:", !!global.db);
+    console.log("🔍 DEBUG: Is db connected?", !!db);
     
     // Create indexes
     await db.collection('users').createIndex({ email: 1 }, { unique: true });
@@ -152,11 +174,21 @@ const connectDB = async () => {
     await db.collection('connectionHistory').createIndex({ userId: 1, date: -1 }); // For connection history
     await db.collection('connectionHistory').createIndex({ userId: 1, targetUserId: 1 }); // For duplicate prevention
     
+    // Also set on app for consistency
+    app.set('db', db);
+    
   } catch (err) {
     console.error("❌ MongoDB connection failed", err);
+    process.exit(1);
   }
 };
 connectDB();
+
+// Make db available to routes
+app.use((req, res, next) => {
+  req.db = db;
+  next();
+});
 
 // Auth middleware (reads Authorization: Bearer <token>)
 const auth = (req, res, next) => {
@@ -546,6 +578,13 @@ app.post("/api/auth/login", async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+// ==================== EXPLORE ROUTES ====================
+// Mount explore routes with database access
+app.use('/api/explore', (req, res, next) => {
+  req.db = db;
+  next();
+}, exploreRoutes);
 
 // ==================== PROFILE ROUTES ====================
 
@@ -1464,7 +1503,7 @@ app.post("/api/posts/:id/vote", auth, async (req, res) => {
         recipientId: post.userId.toString(),
         senderId: userId,
         type: "poll_vote",
-        postId: postId,
+        postId,
         message: `${voter.name} voted on your poll "${post.poll.question}"`
       });
     }

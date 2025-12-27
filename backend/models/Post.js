@@ -76,6 +76,35 @@ const PostSchema = new mongoose.Schema({
     default: true
   },
   
+  // NEW FIELDS FOR EXPLORE PAGE
+  category: {
+    type: String,
+    enum: ['tech', 'events', 'projects', 'achievements', 'fun', 'academic', null],
+    default: null
+  },
+  
+  // Engagement metrics
+  saves: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  
+  shares: {
+    type: Number,
+    default: 0
+  },
+  
+  views: {
+    type: Number,
+    default: 0
+  },
+  
+  // Analytics
+  engagementScore: {
+    type: Number,
+    default: 0
+  },
+  
   // Timestamps
   createdAt: {
     type: Date,
@@ -85,10 +114,56 @@ const PostSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+}, {
+  timestamps: true
 });
 
 // Create index for better search performance
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({ user: 1, createdAt: -1 });
+PostSchema.index({ category: 1, createdAt: -1 });
+PostSchema.index({ 'media.type': 1, createdAt: -1 });
+PostSchema.index({ tags: 1, createdAt: -1 });
+PostSchema.index({ engagementScore: -1 });
+
+// Method to calculate engagement score
+PostSchema.methods.calculateEngagementScore = function() {
+  const likes = this.likes?.length || 0;
+  const comments = this.comments?.length || 0;
+  const saves = this.saves?.length || 0;
+  const shares = this.shares || 0;
+  const views = this.views || 0;
+  
+  // Hours since post was created
+  const hoursSincePost = (Date.now() - new Date(this.createdAt).getTime()) / (1000 * 60 * 60);
+  
+  // Weighted engagement score: (likes * 2) + comments + saves + (shares * 3) - (hoursSincePost * 0.1)
+  const score = (likes * 2) + comments + saves + (shares * 3) - (hoursSincePost * 0.1);
+  this.engagementScore = score;
+  return score;
+};
+
+// Pre-save middleware to update engagement score and extract tags
+PostSchema.pre('save', function(next) {
+  // Update updatedAt
+  this.updatedAt = Date.now();
+  
+  // Extract hashtags from content
+  if (this.isModified('content')) {
+    const hashtagRegex = /#(\w+)/g;
+    const matches = this.content.match(hashtagRegex);
+    if (matches) {
+      this.tags = matches.map(tag => tag.substring(1).toLowerCase());
+    }
+  }
+  
+  // Calculate engagement score if engagement metrics changed
+  if (this.isModified('likes') || this.isModified('comments') || 
+      this.isModified('saves') || this.isModified('shares') || this.isModified('views')) {
+    this.calculateEngagementScore();
+  }
+  
+  next();
+});
 
 module.exports = mongoose.model('Post', PostSchema);
