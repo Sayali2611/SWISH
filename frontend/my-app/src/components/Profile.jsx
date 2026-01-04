@@ -4,8 +4,13 @@ import "../styles/Profile.css";
 import ExploreSearch from "../components/ExploreSearch";
 import "../styles/ExploreSearch.css";
 import axios from "axios";
+import PostModal from "../components/PostModal"; // or the correct path
 
 function Profile() {
+
+const [postModalOpen, setPostModalOpen] = useState(false);
+const [selectedPostForModal, setSelectedPostForModal] = useState(null);
+const [allUsers, setAllUsers] = useState([]);
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -92,7 +97,225 @@ function Profile() {
     fetchUserConnections();
     fetchUserPosts();
     fetchUserActivity();
+    fetchAllUsers(); 
   }, [navigate]);
+
+  // Open modal when clicking comments button
+const openPostModal = (post) => {
+  setSelectedPostForModal(post);
+  setPostModalOpen(true);
+};
+
+// Close modal
+const closePostModal = () => {
+  setSelectedPostForModal(null);
+  setPostModalOpen(false);
+};
+
+// Fetch all users (for showing who liked)
+const fetchAllUsers = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:5000/api/users', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) {
+      const users = await response.json();
+      setAllUsers(users);
+    }
+  } catch (error) {
+    console.error('Error fetching users:', error);
+  }
+};
+
+// Handle like from modal
+const handleLikePost = async (postId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      const updatedPost = await response.json();
+      
+      // Update in user posts list
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId ? updatedPost : post
+        )
+      );
+      
+      // Update in selected post (full view)
+      if (selectedPost && selectedPost._id === postId) {
+        setSelectedPost(updatedPost);
+      }
+      
+      // Update in modal
+      if (selectedPostForModal && selectedPostForModal._id === postId) {
+        setSelectedPostForModal(updatedPost);
+      }
+    }
+  } catch (error) {
+    console.error('Error liking post:', error);
+  }
+};
+
+// Add comment from modal
+const handleAddCommentFromModal = async (postId, commentText) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ content: commentText })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId ? data.post : post
+        )
+      );
+      
+      if (selectedPost && selectedPost._id === postId) {
+        setSelectedPost(data.post);
+      }
+      
+      if (selectedPostForModal && selectedPostForModal._id === postId) {
+        setSelectedPostForModal(data.post);
+      }
+      
+      setSuccess('Comment added!');
+      setTimeout(() => setSuccess(""), 2000);
+      return data.post;
+    }
+  } catch (error) {
+    setError('Failed to add comment');
+    return null;
+  }
+};
+
+// Edit comment from modal
+const handleEditCommentFromModal = async (postId, commentId, text) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ content: text })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId ? data.post : post
+        )
+      );
+      
+      if (selectedPost && selectedPost._id === postId) {
+        setSelectedPost(data.post);
+      }
+      
+      if (selectedPostForModal && selectedPostForModal._id === postId) {
+        setSelectedPostForModal(data.post);
+      }
+      
+      setSuccess('Comment updated!');
+      setTimeout(() => setSuccess(""), 2000);
+      return data.post;
+    }
+  } catch (error) {
+    setError('Failed to update comment');
+    return null;
+  }
+};
+
+// Delete comment from modal
+const handleDeleteCommentFromModal = async (postId, commentId) => {
+  if (!window.confirm('Delete this comment?')) return;
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId ? data.post : post
+        )
+      );
+      
+      if (selectedPost && selectedPost._id === postId) {
+        setSelectedPost(data.post);
+      }
+      
+      if (selectedPostForModal && selectedPostForModal._id === postId) {
+        setSelectedPostForModal(data.post);
+      }
+      
+      setSuccess('Comment deleted!');
+      setTimeout(() => setSuccess(""), 2000);
+      return data.post;
+    }
+  } catch (error) {
+    setError('Failed to delete comment');
+    return null;
+  }
+};
+
+// Like comment from modal
+const handleLikeCommentFromModal = async (postId, commentId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}/like`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId ? data.post : post
+        )
+      );
+      
+      if (selectedPost && selectedPost._id === postId) {
+        setSelectedPost(data.post);
+      }
+      
+      if (selectedPostForModal && selectedPostForModal._id === postId) {
+        setSelectedPostForModal(data.post);
+      }
+      
+      return data.post;
+    }
+  } catch (error) {
+    setError('Failed to like comment');
+    return null;
+  }
+};
 
   // Fetch notification count
   const fetchNotificationCount = async () => {
@@ -731,10 +954,16 @@ const handleSaveEdit = async () => {
                 <span className="stat-label-full">Likes</span>
               </div>
               <div className="stat-full">
-                <span className="stat-icon-full">💬</span>
-                <span className="stat-count-full">{selectedPost.comments?.length || 0}</span>
-                <span className="stat-label-full">Comments</span>
-              </div>
+                  <button 
+                    className="stat-button-comment-full"
+                    onClick={() => openPostModal(selectedPost)}
+                    title="View comments and likes"
+                  >
+                    <span className="stat-icon-full">💬</span>
+                    <span className="stat-count-full">{selectedPost.comments?.length || 0}</span>
+                    <span className="stat-label-full">Comments</span>
+                  </button>
+                </div>
               {selectedPost.type === 'event' && (
                 <div className="stat-full">
                   <span className="stat-icon-full">👥</span>
@@ -849,8 +1078,17 @@ const handleSaveEdit = async () => {
                         <span className="stat-count">{post.likes?.length || 0}</span>
                       </div>
                       <div className="stat-mini">
-                        <span className="stat-icon-mini">💬</span>
-                        <span className="stat-count">{post.comments?.length || 0}</span>
+                        <button 
+                          className="stat-button-comment"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Don't open full post view
+                            openPostModal(post);
+                          }}
+                          title="View comments"
+                        >
+                          <span className="stat-icon-mini">💬</span>
+                          <span className="stat-count">{post.comments?.length || 0}</span>
+                        </button>
                       </div>
                       {post.type === 'event' && (
                         <div className="stat-mini">
@@ -1164,44 +1402,6 @@ const handleSaveEdit = async () => {
                 </div>
               )}
             </div>
-
-            {/* Connections Preview */}
-            {connections.length > 0 && (
-              <div className="connections-preview">
-                <h3>👥 Your Connections ({stats.connections})</h3>
-                <div className="connections-grid">
-                  {connections.map((connection, index) => (
-                    <div 
-                      key={connection._id} 
-                      className="connection-avatar"
-                      title={connection.name}
-                      onClick={() => navigate(`/profile/${connection._id}`)}
-                    >
-                      {connection.profilePhoto ? (
-                        <img src={connection.profilePhoto} alt={connection.name} />
-                      ) : (
-                        <span>{connection.name?.charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                  ))}
-                  {stats.connections > 9 && (
-                    <div 
-                      className="connection-avatar more-connections"
-                      onClick={() => navigate("/network")}
-                      title={`View all ${stats.connections} connections`}
-                    >
-                      <span>+{stats.connections - 9}</span>
-                    </div>
-                  )}
-                </div>
-                <button 
-                  className="view-all-connections"
-                  onClick={() => navigate("/network")}
-                >
-                  View All Connections →
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1522,6 +1722,21 @@ const handleSaveEdit = async () => {
           {activeTab === 'activity' && renderActivityTab()}
           {activeTab === 'about' && renderAboutTab()}
         </div>
+{/* Post Modal for Comments/Likes */}
+{postModalOpen && selectedPostForModal && (
+  <PostModal
+    post={selectedPostForModal}
+    currentUser={user}
+    users={allUsers}
+    onClose={closePostModal}
+    onAddComment={handleAddCommentFromModal}
+    onEditComment={handleEditCommentFromModal}
+    onDeleteComment={handleDeleteCommentFromModal}
+    onLikeComment={handleLikeCommentFromModal}
+    onLikePost={handleLikePost}
+  />
+)}
+
       </div>
     </div>
   );

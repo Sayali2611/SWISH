@@ -1881,6 +1881,271 @@ select.profile-input {
   animation: spin 1s linear infinite;
 }
 
+/* ==================== PROFESSIONAL ABOUT TAB FIX ==================== */
+
+/* Clean up the About tab container */
+.profile-about-tab {
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  min-height: 500px;
+}
+
+/* Fixed header that stays on top during scroll */
+.profile-about-tab .tab-header {
+  background: white;
+  padding: 24px 30px;
+  margin: 0;
+  border-bottom: 2px solid #f1f5f9;
+  border-radius: 16px 16px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.profile-about-tab .tab-header h3 {
+  font-size: 20px;
+  margin: 0;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Fix the profile layout grid */
+.profile-about-tab .profile-layout {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 30px;
+  margin-top: 0;
+  padding: 30px;
+  min-height: 400px;
+}
+
+/* Make sidebar sticky and properly sized */
+.profile-about-tab .profile-sidebar {
+  position: sticky;
+  top: 100px;
+  height: fit-content;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2fe transparent;
+}
+
+.profile-about-tab .profile-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.profile-about-tab .profile-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.profile-about-tab .profile-sidebar::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 3px;
+}
+
+/* Fix the profile card inside sidebar */
+.profile-about-tab .profile-card {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  text-align: center;
+  margin-bottom: 0;
+}
+
+/* Clean up sections inside profile card */
+.profile-about-tab .bio-section,
+.profile-about-tab .skills-section,
+.profile-about-tab .connections-preview,
+.profile-about-tab .profile-actions {
+  padding: 20px 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin: 0 0 20px 0;
+}
+
+.profile-about-tab .connections-preview {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+/* Fix the profile main content */
+.profile-about-tab .profile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2fe transparent;
+  padding-right: 10px;
+}
+
+.profile-about-tab .profile-main::-webkit-scrollbar {
+  width: 6px;
+}
+
+.profile-about-tab .profile-main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.profile-about-tab .profile-main::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 3px;
+}
+
+/* Fix profile details card */
+.profile-about-tab .profile-details-card {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  margin: 0;
+}
+
+.profile-about-tab .profile-details-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #4f46e5;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Fix form grid alignment */
+.profile-about-tab .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.profile-about-tab .input-group {
+  margin-bottom: 0;
+}
+
+.profile-about-tab .input-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+/* Fix privacy toggle alignment */
+.profile-about-tab .privacy-toggle-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-top: 10px;
+}
+
+/* Fix full-width input group */
+.profile-about-tab .full-width {
+  grid-column: 1 / -1;
+}
+
+/* Smooth transitions */
+.profile-about-tab .profile-image,
+.profile-about-tab .skill-tag,
+.profile-about-tab .connection-avatar,
+.profile-about-tab .edit-profile-btn,
+.profile-about-tab .save-profile-btn,
+.profile-about-tab .cancel-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Consistent hover effects */
+.profile-about-tab .skill-tag:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.profile-about-tab .connection-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* Responsive fixes for About tab */
+@media (max-width: 1024px) {
+  .profile-about-tab .profile-layout {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .profile-about-tab .profile-sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+  
+  .profile-about-tab .profile-main {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-about-tab {
+    padding: 0;
+  }
+  
+  .profile-about-tab .profile-layout {
+    padding: 20px;
+  }
+  
+  .profile-about-tab .tab-header {
+    padding: 20px;
+  }
+  
+  .profile-about-tab .profile-card,
+  .profile-about-tab .profile-details-card {
+    padding: 20px;
+  }
+  
+  .profile-about-tab .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-about-tab .profile-layout {
+    padding: 16px;
+  }
+  
+  .profile-about-tab .tab-header {
+    padding: 16px;
+  }
+  
+  .profile-about-tab .profile-card,
+  .profile-about-tab .profile-details-card {
+    padding: 16px;
+  }
+  
+  .profile-about-tab .profile-name {
+    font-size: 24px;
+  }
+  
+  .profile-about-tab .profile-image,
+  .profile-about-tab .profile-image-placeholder {
+    width: 120px;
+    height: 120px;
+  }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -2214,4 +2479,38 @@ select.profile-input {
 .privacy-desc {
   font-size: 14px;
   color: #64748b;
+}
+/* Comment button in mini card */
+.stat-mini .stat-button-comment {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.stat-mini .stat-button-comment:hover {
+  background: #f1f5f9;
+}
+
+/* Comment button in full view */
+.stat-full .stat-button-comment-full {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.stat-full .stat-button-comment-full:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
 }
