@@ -1,23 +1,770 @@
-<div style="background:#fafafa; padding:25px; font-family:system-ui;">
-  <div style="background:#0f172a; color:white; padding:18px 20px; border-radius:8px; display:flex; justify-content:space-between;">
-    <span style="font-weight:600;">Profile</span>
-    <span style="font-size:14px;">👤</span>
-  </div>
-  
-  <div style="background:white; margin:20px 0; padding:20px; border-radius:10px; text-align:center;">
-    <div style="width:60px; height:60px; background:#3b82f6; border-radius:50%; margin:0 auto 15px;"></div>
-    <div style="color:#1e293b; font-weight:600;">Student</div>
-    <div style="color:#64748b; font-size:14px; margin-bottom:20px;">Computer Science</div>
-    
-    <div style="display:flex; justify-content:center; gap:15px;">
-      <div style="text-align:center;">
-        <div style="color:#0f172a; font-weight:600;">24</div>
-        <div style="color:#64748b; font-size:12px;">Posts</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="color:#0f172a; font-weight:600;">156</div>
-        <div style="color:#64748b; font-size:12px;">Followers</div>
-      </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Swish | Minimal Interface</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* PRIMARY PALETTE - Sophisticated Teal */
+            --primary-50: #f0fdfa;
+            --primary-100: #ccfbf1;
+            --primary-500: #14b8a6;
+            --primary-600: #0d9488;
+            --primary-700: #0f766e;
+            
+            /* NEUTRAL SCALE - Professional & Clean */
+            --neutral-50: #fafafa;
+            --neutral-100: #f5f5f5;
+            --neutral-200: #e5e5e5;
+            --neutral-300: #d4d4d4;
+            --neutral-400: #a3a3a3;
+            --neutral-500: #737373;
+            --neutral-600: #525252;
+            --neutral-700: #404040;
+            --neutral-800: #262626;
+            --neutral-900: #171717;
+            
+            /* SEMANTIC COLORS - Subtle & Cohesive */
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            
+            /* UI COLORS */
+            --bg-app: var(--neutral-50);
+            --surface: #ffffff;
+            --border: var(--neutral-200);
+            --border-hover: var(--neutral-300);
+            
+            --text-primary: var(--neutral-900);
+            --text-secondary: var(--neutral-600);
+            --text-muted: var(--neutral-500);
+            
+            /* EFFECTS */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background-color: var(--primary-500);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .nav {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 8px 0;
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            color: var(--primary-600);
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary-500);
+            border-radius: 1px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background-color: var(--neutral-100);
+            color: var(--text-primary);
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            border: 1px solid var(--border);
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background-color: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            border: 1px solid var(--border);
+            height: fit-content;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-item:hover {
+            background-color: var(--neutral-50);
+            color: var(--text-primary);
+        }
+
+        .sidebar-item.active {
+            background-color: var(--primary-50);
+            color: var(--primary-600);
+        }
+
+        .sidebar-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Create Post */
+        .create-post {
+            background-color: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .post-input {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .post-input textarea {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            font-size: 1rem;
+            resize: none;
+            min-height: 80px;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            transition: border-color 0.2s;
+        }
+
+        .post-input textarea:focus {
+            outline: none;
+            border-color: var(--primary-500);
+        }
+
+        .post-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .post-options {
+            display: flex;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background-color: var(--neutral-50);
+            color: var(--text-primary);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-500);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-600);
+        }
+
+        /* Post Feed */
+        .post {
+            background-color: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .post-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            border: 1px solid var(--border);
+        }
+
+        .post-info h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .post-meta {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .post-meta i {
+            font-size: 0.75rem;
+        }
+
+        .post-content {
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .post-actions-bar {
+            display: flex;
+            gap: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background-color: var(--neutral-50);
+            color: var(--text-primary);
+        }
+
+        .action-btn.liked {
+            color: var(--primary-600);
+        }
+
+        .action-btn.liked:hover {
+            background-color: var(--primary-50);
+        }
+
+        /* Status Indicators */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background-color: var(--neutral-100);
+            color: var(--text-secondary);
+        }
+
+        .status.online {
+            background-color: var(--primary-50);
+            color: var(--primary-600);
+        }
+
+        .status.offline {
+            background-color: var(--neutral-100);
+            color: var(--text-muted);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-campus {
+            background-color: var(--primary-50);
+            color: var(--primary-700);
+        }
+
+        .badge-study {
+            background-color: var(--neutral-100);
+            color: var(--neutral-700);
+        }
+
+        .badge-event {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">C</div>
+                    <span>Campus Swish</span>
+                </div>
+                
+                <div class="nav">
+                    <a href="#" class="nav-link active">Feed</a>
+                    <a href="#" class="nav-link">Network</a>
+                    <a href="#" class="nav-link">Courses</a>
+                    <a href="#" class="nav-link">Events</a>
+                    <a href="#" class="nav-link">Jobs</a>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="icon-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button class="icon-btn">
+                        <i class="far fa-bell"></i>
+                    </button>
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" 
+                         alt="Profile" class="avatar">
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
+    
+    <div class="container">
+        <div class="main-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Quick Links</div>
+                    <a href="#" class="sidebar-item active">
+                        <i class="far fa-newspaper"></i>
+                        <span>My Feed</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="far fa-comments"></i>
+                        <span>Messages</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="far fa-bookmark"></i>
+                        <span>Saved</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="far fa-calendar"></i>
+                        <span>Schedule</span>
+                    </a>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Study Groups</div>
+                    <a href="#" class="sidebar-item">
+                        <i class="fas fa-code"></i>
+                        <span>CS 101</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="fas fa-calculator"></i>
+                        <span>Calculus</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="fas fa-flask"></i>
+                        <span>Chemistry Lab</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="fas fa-book"></i>
+                        <span>Literature</span>
+                    </a>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Online Now</div>
+                    <div style="padding: 12px; color: var(--text-secondary); font-size: 0.875rem;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span class="status online">• Online</span>
+                            <span>42 students</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status offline">• Offline</span>
+                            <span>128 students</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Main Content -->
+            <main>
+                <!-- Create Post -->
+                <div class="create-post">
+                    <div class="post-input">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" 
+                             alt="User" class="avatar" style="width: 40px; height: 40px;">
+                        <textarea placeholder="What's happening on campus?"></textarea>
+                    </div>
+                    <div class="post-actions">
+                        <div class="post-options">
+                            <button class="option-btn">
+                                <i class="far fa-image"></i>
+                                <span>Photo</span>
+                            </button>
+                            <button class="option-btn">
+                                <i class="far fa-calendar"></i>
+                                <span>Event</span>
+                            </button>
+                            <button class="option-btn">
+                                <i class="far fa-poll"></i>
+                                <span>Poll</span>
+                            </button>
+                        </div>
+                        <button class="btn btn-primary">Post</button>
+                    </div>
+                </div>
+                
+                <!-- Posts -->
+                <div class="post">
+                    <div class="post-header">
+                        <img src="https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" 
+                             alt="User" class="post-avatar">
+                        <div class="post-info">
+                            <h3>Dr. Sarah Chen</h3>
+                            <div class="post-meta">
+                                <span>Computer Science Department</span>
+                                <i class="fas fa-circle" style="font-size: 4px;"></i>
+                                <span>3 hours ago</span>
+                            </div>
+                        </div>
+                        <span class="badge badge-campus">Campus Announcement</span>
+                    </div>
+                    <div class="post-content">
+                        <p>The Computer Science Department is hosting a guest lecture on "Ethical AI in Modern Applications" this Friday at 3 PM in the Innovation Center.</p>
+                        <p>All students are welcome. This is a great opportunity to learn from industry experts and network with professionals.</p>
+                    </div>
+                    <div class="post-actions-bar">
+                        <button class="action-btn">
+                            <i class="far fa-heart"></i>
+                            <span>Like</span>
+                        </button>
+                        <button class="action-btn">
+                            <i class="far fa-comment"></i>
+                            <span>Comment</span>
+                        </button>
+                        <button class="action-btn">
+                            <i class="far fa-share-square"></i>
+                            <span>Share</span>
+                        </button>
+                        <button class="action-btn">
+                            <i class="far fa-bookmark"></i>
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="post">
+                    <div class="post-header">
+                        <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" 
+                             alt="User" class="post-avatar">
+                        <div class="post-info">
+                            <h3>Alex Johnson</h3>
+                            <div class="post-meta">
+                                <span>Senior • Engineering</span>
+                                <i class="fas fa-circle" style="font-size: 4px;"></i>
+                                <span>5 hours ago</span>
+                                <i class="fas fa-circle" style="font-size: 4px;"></i>
+                                <span class="status online">Online</span>
+                            </div>
+                        </div>
+                        <span class="badge badge-study">Study Group</span>
+                    </div>
+                    <div class="post-content">
+                        <p>Looking for study partners for the Algorithms midterm next week. I usually study in the engineering library from 6-9 PM.</p>
+                        <p>We can go over graph algorithms and dynamic programming problems. Bring your questions!</p>
+                    </div>
+                    <div class="post-actions-bar">
+                        <button class="action-btn liked">
+                            <i class="fas fa-heart"></i>
+                            <span>Liked</span>
+                        </button>
+                        <button class="action-btn">
+                            <i class="far fa-comment"></i>
+                            <span>Comment</span>
+                        </button>
+                        <button class="action-btn">
+                            <i class="far fa-share-square"></i>
+                            <span>Share</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="post">
+                    <div class="post-header">
+                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" 
+                             alt="User" class="post-avatar">
+                        <div class="post-info">
+                            <h3>Student Council</h3>
+                            <div class="post-meta">
+                                <span>Official Announcement</span>
+                                <i class="fas fa-circle" style="font-size: 4px;"></i>
+                                <span>1 day ago</span>
+                            </div>
+                        </div>
+                        <span class="badge badge-event">Event</span>
+                    </div>
+                    <div class="post-content">
+                        <p>🎉 Campus Spring Festival is coming up next month! We're looking for volunteers to help organize events, manage booths, and coordinate activities.</p>
+                        <p>If you're interested in being part of the organizing committee, please sign up through the student portal by Friday.</p>
+                    </div>
+                    <div class="post-actions-bar">
+                        <button class="action-btn">
+                            <i class="far fa-heart"></i>
+                            <span>Like</span>
+                        </button>
+                        <button class="action-btn">
+                            <i class="far fa-comment"></i>
+                            <span>24 Comments</span>
+                        </button>
+                        <button class="action-btn">
+                            <i class="far fa-share-square"></i>
+                            <span>Share</span>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+        
+        <div class="footer">
+            <p>Campus Swish Connect • A professional social platform for academic communities</p>
+            <p style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">
+                Elegant Teal Palette • Minimal Design • Cohesive Color System
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Interactive functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Like buttons
+            document.querySelectorAll('.action-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const icon = this.querySelector('i');
+                    const text = this.querySelector('span');
+                    
+                    if (text.textContent === 'Like' || text.textContent === 'Liked') {
+                        if (icon.classList.contains('far')) {
+                            // Like
+                            icon.classList.remove('far');
+                            icon.classList.add('fas');
+                            text.textContent = 'Liked';
+                            this.classList.add('liked');
+                        } else {
+                            // Unlike
+                            icon.classList.remove('fas');
+                            icon.classList.add('far');
+                            text.textContent = 'Like';
+                            this.classList.remove('liked');
+                        }
+                    }
+                    
+                    if (text.textContent === 'Save' || text.textContent === 'Saved') {
+                        if (icon.classList.contains('far')) {
+                            icon.classList.remove('far');
+                            icon.classList.add('fas');
+                            text.textContent = 'Saved';
+                        } else {
+                            icon.classList.remove('fas');
+                            icon.classList.add('far');
+                            text.textContent = 'Save';
+                        }
+                    }
+                });
+            });
+            
+            // Post button
+            document.querySelector('.btn-primary').addEventListener('click', function() {
+                const textarea = document.querySelector('textarea');
+                if (textarea.value.trim()) {
+                    alert('Post created successfully!');
+                    textarea.value = '';
+                } else {
+                    alert('Please write something before posting.');
+                }
+            });
+            
+            // Nav link active state
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // Sidebar item active state
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

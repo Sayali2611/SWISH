@@ -460,7 +460,14 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
       warnings: [],
       warningCount: 0,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      // ADD THESE FIELDS to the user object:
+      status: 'active', // active, suspended, banned, restricted
+      restrictedUntil: null, // Date when restriction ends
+      restrictionReason: '',
+      lastLogin: null,
+      loginCount: 0,
+      department: department || facultyDepartment || '', // Unified department field
     };
 
     // Add role-specific fields
@@ -550,6 +557,13 @@ app.post("/api/auth/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+    await db.collection('users').updateOne(
+  { _id: user._id },
+  { 
+    $set: { lastLogin: new Date() },
+    $inc: { loginCount: 1 }
+  }
+);
 
     const userResponse = {
       id: user._id,
@@ -665,6 +679,23 @@ app.get("/api/auth/profile", auth, async (req, res) => {
 // Update user profile
 app.put("/api/auth/profile", auth, async (req, res) => {
   try {
+  // ============ ADD THIS CHECK ============
+    const userId = req.user.userId;
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      if (restrictionEnd > now) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. You cannot edit profile during restriction.`,
+          canEditProfile: false
+        });
+      }
+    }
+
     const { 
       name,
       contact,
@@ -679,7 +710,7 @@ app.put("/api/auth/profile", auth, async (req, res) => {
       isPrivate 
     } = req.body;
 
-    const userId = req.user.userId;
+    // const userId = req.user.userId;
 
     const updateData = {
       updatedAt: new Date()
@@ -734,6 +765,41 @@ app.post("/api/posts", auth, async (req, res) => {
   try {
     const { content, type, event, poll } = req.body;
     const userId = req.user.userId;
+
+    // ============ ADD RESTRICTION CHECK HERE ============
+    // Check if user is restricted
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      // If still restricted
+      if (restrictionEnd > now) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. Reason: ${user.restrictionReason || 'Administrative action'}`,
+          restrictedUntil: restrictionEnd,
+          restrictionReason: user.restrictionReason,
+          canPost: false
+        });
+      } 
+      // If restriction expired, auto-remove it
+      else {
+        await db.collection('users').updateOne(
+          { _id: new ObjectId(userId) },
+          { 
+            $set: { 
+              status: 'active',
+              restrictedUntil: null,
+              restrictionReason: '',
+              updatedAt: new Date()
+            }
+          }
+        );
+      }
+    }
+    // ============ END RESTRICTION CHECK ============
 
     // Basic validation
     if (!content && type !== 'poll') {
@@ -799,7 +865,7 @@ app.post("/api/posts", auth, async (req, res) => {
     const result = await db.collection('posts').insertOne(post);
     
     // Get user data for response
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    // const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     
     const postResponse = {
       _id: result.insertedId,
@@ -834,8 +900,35 @@ app.post("/api/posts/upload", auth, postMediaUpload.array('media', 10), async (r
   console.log("📤 UPLOADING POST WITH MEDIA TO CLOUDINARY...");
   
   try {
+const userId = req.user.userId;
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      if (restrictionEnd > now) {
+        // Delete uploaded files if any
+        if (req.files && req.files.length > 0) {
+          for (const file of req.files) {
+            try {
+              await cloudinary.uploader.destroy(file.filename);
+            } catch (e) {
+              console.error("Error deleting uploaded file:", e);
+            }
+          }
+        }
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. Reason: ${user.restrictionReason || 'Administrative action'}`,
+          canPost: false
+        });
+      }
+    }
+    // ============ END CHECK ============
+
     const { content, type, event, poll } = req.body;
-    const userId = req.user.userId;
+    // const userId = req.user.userId;
     const files = req.files || [];
 
     console.log("Content:", content);
@@ -885,7 +978,7 @@ app.post("/api/posts/upload", auth, postMediaUpload.array('media', 10), async (r
     console.log("Processed media:", media);
 
     // Get user details
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    // const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     if (!user) {
       return res.status(404).json({ 
         success: false,
@@ -1470,9 +1563,27 @@ app.post("/api/posts/:id/vote", auth, async (req, res) => {
 // Add comment to post with UNIQUE ID
 app.post("/api/posts/:postId/comment", auth, async (req, res) => {
   try {
+ // ============ ADD THIS CHECK ============
+    const userId = req.user.userId;
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      if (restrictionEnd > now) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. You cannot comment during restriction.`,
+          canComment: false
+        });
+      }
+    }
+    // ============ END CHECK ============
+
     const { content } = req.body;
     const postId = req.params.postId;
-    const userId = req.user.userId;
+    // const userId = req.user.userId;
 
     if (!content || !content.trim()) {
       return res.status(400).json({ message: 'Comment content is required' });
@@ -1484,7 +1595,7 @@ app.post("/api/posts/:postId/comment", auth, async (req, res) => {
     }
 
     // Get user info for comment
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    // const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -1770,8 +1881,26 @@ app.post("/api/posts/:postId/comments/:commentId/like", auth, async (req, res) =
 
 app.post("/api/posts/:postId/like", auth, async (req, res) => {
   try {
-    const { postId } = req.params;
+
+ // ============ ADD THIS CHECK ============
     const userId = req.user.userId;
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      if (restrictionEnd > now) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. You cannot like posts during restriction.`,
+          canLike: false
+        });
+      }
+    }
+
+    const { postId } = req.params;
+    // const userId = req.user.userId;
 
     // Validate postId
     if (!ObjectId.isValid(postId)) {
@@ -1787,7 +1916,7 @@ app.post("/api/posts/:postId/like", auth, async (req, res) => {
     if (!post.likes) post.likes = [];
     
     // Get user info for the liker
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    // const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     
     // Check if user already liked the post
     const existingLikeIndex = post.likes.findIndex(like => {
@@ -2386,8 +2515,26 @@ app.post("/api/network/history/initialize", auth, async (req, res) => {
 // Send connection request (with history recording)
 app.post("/api/network/request/:userId", auth, async (req, res) => {
   try {
-    const targetUserId = req.params.userId;
+  // ============ ADD THIS CHECK ============
     const currentUserId = req.user.userId;
+    const user = await db.collection('users').findOne({ _id: new ObjectId(currentUserId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      if (restrictionEnd > now) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. You cannot send connection requests during restriction.`,
+          canSendRequests: false
+        });
+      }
+    }
+    // ============ END CHECK ============
+
+    const targetUserId = req.params.userId;
+    // const currentUserId = req.user.userId;
 
     if (targetUserId === currentUserId) {
       return res.status(400).json({ message: "You cannot send a connection request to yourself" });
@@ -2456,8 +2603,26 @@ app.post("/api/network/request/:userId", auth, async (req, res) => {
 // Accept connection request (with history recording)
 app.post("/api/network/accept/:userId", auth, async (req, res) => {
   try {
-    const senderUserId = req.params.userId;
+ // ============ ADD THIS CHECK ============
     const currentUserId = req.user.userId;
+    const user = await db.collection('users').findOne({ _id: new ObjectId(currentUserId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      if (restrictionEnd > now) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. You cannot accept connections during restriction.`,
+          canAcceptRequests: false
+        });
+      }
+    }
+    // ============ END CHECK ============
+
+    const senderUserId = req.params.userId;
+    // const currentUserId = req.user.userId;
 
     // Validate userId
     if (!ObjectId.isValid(senderUserId)) {
@@ -3652,6 +3817,500 @@ app.get("/api/admin/users/:userId/warnings", auth, requireAdmin, async (req, res
       },
       warnings: user.warnings || [],
       totalWarnings: user.warnings?.length || 0
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== NEW ADMIN ENDPOINTS ====================
+
+// Update user role (Admin only)
+app.put("/api/admin/users/:userId/role", auth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+    
+    if (!role || !['student', 'faculty', 'admin'].includes(role)) {
+      return res.status(400).json({ message: 'Valid role required (student, faculty, admin)' });
+    }
+    
+    // Validate userId
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    // Don't allow changing own role
+    if (userId === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot change your own role' });
+    }
+    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { role, updatedAt: new Date() } }
+    );
+    
+    // Notify user about role change
+    await createNotification({
+      recipientId: userId,
+      senderId: req.user.userId,
+      type: "role_changed",
+      message: `Your role has been changed to ${role} by admin`
+    });
+    
+    res.json({ 
+      success: true,
+      message: `User role changed to ${role} successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update user status (active/suspended/banned) - Admin only
+app.put("/api/admin/users/:userId/status", auth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status, reason, durationHours } = req.body;
+    
+    if (!status || !['active'].includes(status)) {
+      return res.status(400).json({ message: 'Valid status required (active,)' });
+    }
+    
+    // Validate userId
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    // Don't allow changing own status
+    if (userId === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot change your own status' });
+    }
+    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    const updateData = {
+      status,
+      updatedAt: new Date()
+    };
+    
+    // If unsuspending/activating, clear restriction
+    if (status === 'active') {
+      updateData.restrictedUntil = null;
+      updateData.restrictionReason = '';
+    }
+    
+    // If suspending/banning, add reason
+    if (status !== 'active' && reason) {
+      updateData.restrictionReason = reason;
+    }
+    
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: updateData }
+    );
+    
+    // Create appropriate notification
+    const action = status === 'active' ? 'activated' : status === 'suspended' ? 'suspended' : 'banned';
+    await createNotification({
+      recipientId: userId,
+      senderId: req.user.userId,
+      type: "account_status",
+      message: `Your account has been ${action} by admin. ${reason ? `Reason: ${reason}` : ''}`
+    });
+    
+    res.json({ 
+      success: true,
+      message: `User account ${action} successfully`,
+      status: status
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== RESTRICTION CHECK MIDDLEWARE ====================
+const checkRestriction = async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return next();
+    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) return next();
+    
+    // Auto-remove expired restriction
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      if (new Date(user.restrictedUntil) < new Date()) {
+        await db.collection('users').updateOne(
+          { _id: new ObjectId(userId) },
+          { 
+            $set: { 
+              status: 'active',
+              'restrictionDetails.isRestricted': false,
+              'restrictionDetails.restrictedUntil': null,
+              'restrictionDetails.restrictionReason': '',
+              'permissions.canPost': true,
+              'permissions.canComment': true,
+              'permissions.canEditProfile': true,
+              'permissions.canSendRequests': true,
+              'permissions.canAcceptRequests': true,
+              'permissions.canLike': true,
+              'permissions.canShare': true
+            }
+          }
+        );
+        return next();
+      }
+      
+      // Check if action is allowed
+      const restrictedEndpoints = {
+        'POST': ['/api/posts', '/api/posts/upload'],
+        'PUT': ['/api/auth/profile'],
+        'DELETE': ['/api/posts']
+      };
+      
+      const currentMethod = req.method;
+      const currentPath = req.path;
+      
+      if (restrictedEndpoints[currentMethod]?.some(endpoint => currentPath.startsWith(endpoint))) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${new Date(user.restrictedUntil).toLocaleString()}. Reason: ${user.restrictionReason || 'Administrative action'}`,
+          restrictedUntil: user.restrictedUntil,
+          restrictionReason: user.restrictionReason
+        });
+      }
+    }
+    
+    next();
+  } catch (error) {
+    console.error("Restriction check error:", error);
+    next();
+  }
+};
+
+// Apply restriction check to all protected routes
+app.use('/api/', auth, checkRestriction);
+
+// Restrict user for specific duration (Admin only)
+app.post("/api/admin/users/:userId/restrict", auth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { reason, duration = '24h' } = req.body;
+    
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Restriction reason is required' });
+    }
+    
+    // Validate duration
+    const validDurations = ['1h', '6h', '12h', '24h', '3d', '7d'];
+    if (!validDurations.includes(duration)) {
+      return res.status(400).json({ message: 'Invalid duration. Use: 1h, 6h, 12h, 24h, 3d, 7d' });
+    }
+    
+    // Validate userId
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    // Don't allow restricting yourself
+    if (userId === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot restrict your own account' });
+    }
+    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Calculate restriction end time based on duration
+    const restrictedUntil = new Date();
+    const durationMap = {
+      '1h': 1 * 60 * 60 * 1000,
+      '6h': 6 * 60 * 60 * 1000,
+      '12h': 12 * 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+      '3d': 3 * 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000
+    };
+    
+    restrictedUntil.setTime(restrictedUntil.getTime() + durationMap[duration]);
+    
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { 
+        $set: { 
+          status: 'restricted',
+          restrictedUntil,
+          restrictionReason: reason.trim(),
+          'restrictionDetails.isRestricted': true,
+          'restrictionDetails.restrictedUntil': restrictedUntil,
+          'restrictionDetails.restrictionReason': reason.trim(),
+          'restrictionDetails.restrictionDuration': duration,
+          'restrictionDetails.restrictedAt': new Date(),
+          'permissions.canPost': false,
+          'permissions.canComment': false,
+          'permissions.canEditProfile': false,
+          'permissions.canSendRequests': false,
+          'permissions.canAcceptRequests': false,
+          'permissions.canLike': false,
+          'permissions.canShare': false,
+          updatedAt: new Date()
+        }
+      }
+    );
+    
+    // Notify user about restriction
+    await createNotification({
+      recipientId: userId,
+      senderId: req.user.userId,
+      type: "account_restricted",
+      message: `⏸️ Your account has been restricted for ${duration}. Reason: ${reason}. You cannot post, comment, like, send/accept connections, or edit profile until ${restrictedUntil.toLocaleString()}.`
+    });
+    
+    res.json({ 
+      success: true,
+      message: `User restricted for ${duration} successfully`,
+      restrictedUntil,
+      restrictionReason: reason.trim(),
+      duration
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Remove restriction (Admin only)
+app.post("/api/admin/users/:userId/unrestrict", auth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Validate userId
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (user.status !== 'restricted') {
+      return res.status(400).json({ message: 'User is not restricted' });
+    }
+    
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { 
+        $set: { 
+          status: 'active',
+          restrictedUntil: null,
+          restrictionReason: '',
+          'restrictionDetails.isRestricted': false,
+          'restrictionDetails.restrictedUntil': null,
+          'restrictionDetails.restrictionReason': '',
+          'restrictionDetails.restrictionDuration': '',
+          'permissions.canPost': true,
+          'permissions.canComment': true,
+          'permissions.canEditProfile': true,
+          'permissions.canSendRequests': true,
+          'permissions.canAcceptRequests': true,
+          'permissions.canLike': true,
+          'permissions.canShare': true,
+          updatedAt: new Date()
+        }
+      }
+    );
+    
+    // Notify user about removal of restriction
+    await createNotification({
+      recipientId: userId,
+      senderId: req.user.userId,
+      type: "account_unrestricted",
+      message: `✅ Your account restriction has been removed. You can now post, comment, like, and connect normally.`
+    });
+    
+    res.json({ 
+      success: true,
+      message: 'User restriction removed successfully',
+      status: 'active'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get user details with activity (Admin only)
+app.get("/api/admin/users/:userId/details", auth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Validate userId
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    const user = await db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { password: 0 } }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Get user's posts count
+    const postsCount = await db.collection('posts').countDocuments({ userId: new ObjectId(userId) });
+    
+    // Get total likes received (sum of likes on user's posts)
+    const userPosts = await db.collection('posts')
+      .find({ userId: new ObjectId(userId) })
+      .project({ likes: 1 })
+      .toArray();
+    
+    const totalLikesReceived = userPosts.reduce((sum, post) => sum + (post.likes?.length || 0), 0);
+    
+    // Get total comments made by user
+    const allPosts = await db.collection('posts').find().toArray();
+    const commentsCount = allPosts.reduce((sum, post) => {
+      if (post.comments) {
+        const userComments = post.comments.filter(comment => comment.userId === userId);
+        return sum + userComments.length;
+      }
+      return sum;
+    }, 0);
+    
+    // Get user's last activity
+    const userPostsSorted = await db.collection('posts')
+      .find({ userId: new ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .toArray();
+    
+    const lastActivity = userPostsSorted[0]?.createdAt || user.createdAt;
+    
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status || 'active',
+        department: user.department || '',
+        profilePhoto: user.profilePhoto,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+        warningCount: user.warningCount || 0,
+        connectionsCount: user.connections?.length || 0,
+        restrictedUntil: user.restrictedUntil,
+        restrictionReason: user.restrictionReason
+      },
+      activity: {
+        postsCount,
+        totalLikesReceived,
+        commentsCount,
+        lastActivity,
+        loginCount: user.loginCount || 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Admin search users with filters
+app.get("/api/admin/users/search", auth, requireAdmin, async (req, res) => {
+  try {
+    const { 
+      query = '', 
+      role = '', 
+      status = '', 
+      department = '',
+      page = 1, 
+      limit = 20 
+    } = req.query;
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Build search query
+    const searchQuery = {};
+    
+    if (query) {
+      searchQuery.$or = [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } },
+        { department: { $regex: query, $options: 'i' } }
+      ];
+    }
+    
+    if (role) {
+      searchQuery.role = role;
+    }
+    
+    if (status) {
+      searchQuery.status = status;
+    }
+    
+    if (department) {
+      searchQuery.department = { $regex: department, $options: 'i' };
+    }
+    
+    // Get users
+    const users = await db.collection('users')
+      .find(searchQuery)
+      .project({
+        _id: 1,
+        name: 1,
+        email: 1,
+        role: 1,
+        status: 1,
+        department: 1,
+        profilePhoto: 1,
+        createdAt: 1,
+        warningCount: 1,
+        connections: 1,
+        restrictedUntil: 1,
+        restrictionReason: 1
+      })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .toArray();
+    
+    // Get total count for pagination
+    const totalUsers = await db.collection('users').countDocuments(searchQuery);
+    
+    // Get stats for each user
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const postsCount = await db.collection('posts').countDocuments({ userId: user._id });
+        
+        return {
+          ...user,
+          postsCount,
+          connectionsCount: user.connections?.length || 0,
+          isRestricted: user.status === 'restricted' && user.restrictedUntil > new Date()
+        };
+      })
+    );
+    
+    res.json({
+      success: true,
+      users: usersWithStats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalUsers,
+        totalPages: Math.ceil(totalUsers / parseInt(limit))
+      }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

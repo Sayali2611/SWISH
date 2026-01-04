@@ -507,6 +507,8 @@ const ImageCarousel = ({ images, videos }) => {
   );
 };
 
+
+
 function Feed() {
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
@@ -563,6 +565,78 @@ function Feed() {
   const fileInputRef = useRef(null);
   const highlightTimeoutRef = useRef(null);
   const lastHighlightTimeRef = useRef(0);
+
+  // Add this function in your Feed component
+const fetchUserWithRestriction = useCallback(async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:5000/api/auth/profile', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.ok) {
+      const freshUser = await response.json();
+      console.log("🔄 Fresh user data with restriction:", {
+        status: freshUser.status,
+        restrictedUntil: freshUser.restrictedUntil,
+        restrictionReason: freshUser.restrictionReason
+      });
+      
+      setUser(freshUser);
+      localStorage.setItem('user', JSON.stringify(freshUser));
+    }
+  } catch (error) {
+    console.error("Error fetching fresh user data:", error);
+  }
+}, []);
+
+const handleRestrictedAction = () => {
+  console.log("🔍 Checking restriction for user:", user?.name);
+  console.log("🔍 User status:", user?.status);
+  console.log("🔍 Restricted until:", user?.restrictedUntil);
+  
+  if (!user) {
+    console.log("🔍 No user found");
+    return true;
+  }
+  
+  // Check if fields exist, if not fetch fresh data
+  if (user.status === undefined || user.restrictedUntil === undefined) {
+    console.log("🔍 Restriction fields missing, fetching fresh data");
+    fetchUserWithRestriction();
+    return true; // Block action while fetching
+  }
+  
+  if (user.status === 'restricted' && user.restrictedUntil) {
+    const now = new Date();
+    const restrictionEnd = new Date(user.restrictedUntil);
+    
+    console.log("🔍 Now:", now);
+    console.log("🔍 Restriction end:", restrictionEnd);
+    console.log("🔍 Is restricted?", restrictionEnd > now);
+    
+    if (restrictionEnd > now) {
+      const formattedDate = restrictionEnd.toLocaleString();
+      const message = `⏸️ Your account is restricted until ${formattedDate}. You cannot post, comment, like, or connect during this time.`;
+      
+      console.log("🔍 Showing restriction message:", message);
+      setError(message);
+      return true;
+    } else {
+      console.log("🔍 Restriction expired, auto-removing");
+      setUser(prev => ({
+        ...prev,
+        status: 'active',
+        restrictedUntil: null
+      }));
+    }
+  } else {
+    console.log("🔍 User is not restricted");
+  }
+  
+  return false;
+};
+
 
   // Cleanup preview URLs
   useEffect(() => {
@@ -876,7 +950,9 @@ function Feed() {
 
     const userObj = JSON.parse(userData);
     setUser(userObj);
-    
+     // ADD THIS: Fetch fresh user data with restriction status
+  fetchUserWithRestriction();
+
     isProcessingRef.current = false;
     fetchPosts();
     fetchAllUsers();
@@ -1039,6 +1115,8 @@ function Feed() {
 
   // ==================== POST CREATION ====================
   const handleCreatePost = async () => {
+    if (handleRestrictedAction()) return;
+
     console.log("🚀 [Feed] Post button clicked!");
     console.log("📝 Post content:", newPost);
     console.log("📋 Post type:", postType);
@@ -1205,6 +1283,7 @@ function Feed() {
 
   // ==================== POST INTERACTIONS ====================
   const handleEventRSVP = async (postId, status) => {
+    if (handleRestrictedAction()) return;
     if (!user) return;
 
     setRsvpLoading(prev => ({ ...prev, [postId]: true }));
@@ -1241,6 +1320,7 @@ function Feed() {
   };
 
   const handlePollVote = async (postId, optionIndex) => {
+    if (handleRestrictedAction()) return;
     if (!user) return;
 
     setVoteLoading(prev => ({ ...prev, [postId]: true }));
@@ -1277,83 +1357,83 @@ function Feed() {
   };
 
   const handleLike = async (postId) => {
-    if (!user) return;
+  if (handleRestrictedAction()) return; // Restriction check
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+  if (!user) return;
 
-      if (response.ok) {
-        const updatedPost = await response.json();
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post._id === postId ? updatedPost : post
-          )
-        );
-        // Update selectedPost if modal is open
-        if (selectedPost && selectedPost._id === postId) {
-          setSelectedPost(updatedPost);
-        }
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
-    } catch (error) {
-      setError('Failed to like post');
+    });
+
+    if (response.ok) {
+      const updatedPost = await response.json();
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId ? updatedPost : post
+        )
+      );
+      // Update selectedPost if modal is open
+      if (selectedPost && selectedPost._id === postId) {
+        setSelectedPost(updatedPost);
+      }
     }
-  };
+    // REMOVE error handling - don't show "Failed to like post"
+  } catch (error) {
+    // Silent catch - don't show any error message
+  }
+};
 
-  // Updated handleAddComment to work with PostModal
-  const handleAddComment = async (postId, commentText) => {
-    if (!commentText?.trim() || !user) return;
+const handleAddComment = async (postId, commentText) => {
+  if (handleRestrictedAction()) return; // Restriction check
+  if (!commentText?.trim() || !user) return;
 
-    setCommentLoading(prev => ({ ...prev, [postId]: true }));
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          content: commentText
-        })
-      });
+  setCommentLoading(prev => ({ ...prev, [postId]: true }));
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        content: commentText
+      })
+    });
 
+    if (response.ok) {
       const data = await response.json();
-
-      if (response.ok) {
-        setCommentTexts(prev => ({ ...prev, [postId]: "" }));
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post._id === postId ? data.post : post
-          )
-        );
-        
-        // Update selectedPost if modal is open
-        if (selectedPost && selectedPost._id === postId) {
-          setSelectedPost(data.post);
-        }
-        
-        setSuccess('Comment added successfully!');
-        setTimeout(() => setSuccess(""), 2000);
-        return data.post; // Return updated post
-      } else {
-        setError('Failed to add comment');
-        return null;
+      setCommentTexts(prev => ({ ...prev, [postId]: "" }));
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId ? data.post : post
+        )
+      );
+      
+      // Update selectedPost if modal is open
+      if (selectedPost && selectedPost._id === postId) {
+        setSelectedPost(data.post);
       }
-    } catch (error) {
-      setError('Network error: Unable to add comment');
-      return null;
-    } finally {
-      setCommentLoading(prev => ({ ...prev, [postId]: false }));
+      
+      setSuccess('Comment added successfully!');
+      setTimeout(() => setSuccess(""), 2000);
+      return data.post; // Return updated post
     }
-  };
+    // REMOVE error handling - don't show "Failed to add comment"
+  } catch (error) {
+    // Silent catch - don't show any error message
+    return null;
+  } finally {
+    setCommentLoading(prev => ({ ...prev, [postId]: false }));
+  }
+};
 
   // Open post modal with comments and likes
   const openPostModal = (post) => {

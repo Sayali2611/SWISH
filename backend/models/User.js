@@ -140,7 +140,32 @@ const UserSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+
+  // Add this after your warnings array in User.js:
+
+// Restriction fields
+status: {
+  type: String,
+  enum: ['active', 'restricted', 'suspended', 'banned'],
+  default: 'active'
+},
+restrictionDetails: {
+  isRestricted: { type: Boolean, default: false },
+  restrictedUntil: Date,
+  restrictionReason: String,
+  restrictionDuration: String, // '6h', '12h', '24h', '3d', '7d'
+  restrictedAt: Date
+},
+permissions: {
+  canPost: { type: Boolean, default: true },
+  canComment: { type: Boolean, default: true },
+  canEditProfile: { type: Boolean, default: true },
+  canSendRequests: { type: Boolean, default: true },
+  canAcceptRequests: { type: Boolean, default: true },
+  canLike: { type: Boolean, default: true },
+  canShare: { type: Boolean, default: true }
+}
 });
 
 // Compare password method (optional - can also use bcrypt.compare directly)
