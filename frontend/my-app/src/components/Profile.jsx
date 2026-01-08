@@ -1637,28 +1637,7 @@ const handleSaveEdit = async () => {
       )}
 
       <div className="profile-content">
-        {/* Profile Completion Meter */}
-        {profileCompletion < 100 && (
-          <div className="profile-completion-card">
-            <div className="completion-header">
-              <span>🔄 Profile Strength</span>
-              <span className="completion-percentage">{profileCompletion}%</span>
-            </div>
-            <div className="completion-bar">
-              <div 
-                className="completion-fill" 
-                style={{ width: `${profileCompletion}%` }}
-              ></div>
-            </div>
-            <p className="completion-hint">
-              {profileCompletion < 50 
-                ? "Add more details to complete your profile!" 
-                : profileCompletion < 80 
-                ? "Great progress! Add a few more details."
-                : "Almost there! Just a few more details needed."}
-            </p>
-          </div>
-        )}
+      
 
         {/* Stats Dashboard */}
         <div className="stats-dashboard">

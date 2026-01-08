@@ -607,10 +607,13 @@ const handleRestrictedAction = () => {
     return true; // Block action while fetching
   }
   
-  if (user.status === 'restricted' && user.restrictedUntil) {
+  const userStatus = user.status || 'active'; // Default to 'active' if undefined
+const restrictedUntil = user.restrictedUntil || null;
+
+if (userStatus === 'restricted' && restrictedUntil) {
     const now = new Date();
     const restrictionEnd = new Date(user.restrictedUntil);
-    
+  
     console.log("🔍 Now:", now);
     console.log("🔍 Restriction end:", restrictionEnd);
     console.log("🔍 Is restricted?", restrictionEnd > now);

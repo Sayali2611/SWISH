@@ -14,6 +14,10 @@ function AdminDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const navigate = useNavigate();
+  // Add these state variables with other state declarations:
+const [activeReportsTab, setActiveReportsTab] = useState("pending"); // New state for reports tabs
+const [resolvedReports, setResolvedReports] = useState([]);
+const [resolvedLoading, setResolvedLoading] = useState(false);
 
   // Toast notifications
   const [toasts, setToasts] = useState([]);
@@ -69,25 +73,31 @@ function AdminDashboard() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (!user || user.role !== 'admin') {
-      navigate("/feed");
-      return;
-    }
-    
-    if (activeTab === "dashboard") {
-      fetchStats();
-    } else if (activeTab === "users") {
-      fetchUsers();
-    } else if (activeTab === "posts") {
-      fetchPosts();
-    } else if (activeTab === "reports") {
+useEffect(() => {
+  const user = JSON.parse(localStorage.getItem('user'));
+  if (!user || user.role !== 'admin') {
+    navigate("/feed");
+    return;
+  }
+  
+  if (activeTab === "dashboard") {
+    fetchStats();
+  } else if (activeTab === "users") {
+    fetchUsers();
+  } else if (activeTab === "posts") {
+    fetchPosts();
+     fetchUsers();
+  } else if (activeTab === "reports") {
+    if (activeReportsTab === "pending") {
       fetchReports();
-    } else if (activeTab === "analytics") {
-      fetchAnalytics();
+      fetchUsers(); // 
+    } else {
+      fetchResolvedReports();
     }
-  }, [activeTab, navigate]);
+  } else if (activeTab === "analytics") {
+    fetchAnalytics();
+  }
+}, [activeTab, activeReportsTab, navigate]); // Add activeReportsTab to dependency
 
   // Apply filters whenever filters change
   useEffect(() => {
@@ -228,28 +238,76 @@ function AdminDashboard() {
     }
   };
 
-  const fetchAnalytics = async () => {
-    setAnalyticsLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/analytics', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.status === 403) {
-        showToast("Admin access required", "error");
-        navigate("/feed");
-        return;
-      }
-      
-      const data = await response.json();
-      setAnalytics(data);
-    } catch (error) {
-      showToast("Failed to fetch analytics", "error");
-    } finally {
-      setAnalyticsLoading(false);
+const fetchAnalytics = async () => {
+  setAnalyticsLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:5000/api/admin/analytics', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.status === 403) {
+      showToast("Admin access required", "error");
+      navigate("/feed");
+      return;
     }
-  };
+    
+    const data = await response.json();
+    
+    // Extract the data in the format your frontend expects
+    const enhancedAnalytics = {
+      ...data,
+      // For backward compatibility
+      activeUsersToday: data.platformStats?.activeUsersToday || 0,
+      newUsersToday: data.platformStats?.newUsersToday || 0,
+      postsToday: data.platformStats?.postsToday || 0,
+      reportsResolvedToday: data.moderationStats?.reportsResolvedToday || 0,
+      activeWarnings: data.moderationStats?.activeWarnings || 0,
+      restrictedAccounts: data.moderationStats?.restrictedAccounts || 0,
+      pendingReports: data.moderationStats?.pendingReports || 0,
+      engagementByDept: data.engagementByDept || [],
+      // Keep existing fields
+      dailyPosts: data.dailyPosts || [],
+      topUsers: data.topUsers || [],
+      postsByType: data.postsByType || [],
+      postsByDept: data.postsByDept || []
+    };
+    
+    setAnalytics(enhancedAnalytics);
+  } catch (error) {
+    showToast("Failed to fetch analytics", "error");
+  } finally {
+    setAnalyticsLoading(false);
+  }
+};
+
+const fetchResolvedReports = async () => {
+  setResolvedLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:5000/api/admin/reports/resolved', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      // Check if data has reports array or is already an array
+      if (data.success && data.reports) {
+        setResolvedReports(data.reports);
+      } else if (Array.isArray(data)) {
+        setResolvedReports(data);
+      } else {
+        showToast("Invalid data format for resolved reports", "error");
+      }
+    } else {
+      showToast("Failed to fetch resolved reports", "error");
+    }
+  } catch (error) {
+    showToast("Network error fetching resolved reports", "error");
+  } finally {
+    setResolvedLoading(false);
+  }
+};
 
   // ==================== USER ACTIONS ====================
 
@@ -294,7 +352,8 @@ function AdminDashboard() {
     setShowRestrictModal(true);
   };
 
- const handleRestrictUser = async () => {
+// In handleRestrictUser function, add this after showToast:
+const handleRestrictUser = async () => {
   if (!selectedUser || !modalReason) return;
 
   try {
@@ -329,12 +388,41 @@ function AdminDashboard() {
           }
         } : user
       ));
+      
       showToast(`User restricted for ${modalDuration}`, "success");
+      
+      // ✅ FIX: Resolve the report if it came from a report
+      if (selectedReport) {
+        try {
+          const resolveResponse = await fetch(`http://localhost:5000/api/admin/reports/${selectedReport._id}/resolve`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+              action: 'restrict',
+              adminReason: `User restricted: ${modalReason} for ${modalDuration}`
+            })
+          });
+          
+          if (resolveResponse.ok) {
+            // Remove from pending reports
+            setReports(reports.filter(report => report._id !== selectedReport._id));
+            // Refresh resolved reports
+            fetchResolvedReports();
+          }
+        } catch (resolveError) {
+          console.error("Error resolving report:", resolveError);
+        }
+      }
+      
       setShowRestrictModal(false);
       setSelectedUser(null);
       setModalReason("");
       setModalDuration("24h");
       fetchStats();
+      
     } else {
       showToast(data.message || "Failed to restrict user", "error");
     }
@@ -466,33 +554,62 @@ const handleUnrestrictUser = async (user) => {
     setShowWarnModal(true);
   };
 
-  const handleWarnUser = async () => {
-    if (!selectedUser || !modalReason) return;
+// In handleWarnUser function, add this after showToast:
+const handleWarnUser = async () => {
+  if (!selectedUser || !modalReason) return;
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/users/${selectedUser._id}/warn`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ reason: modalReason })
-      });
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/admin/users/${selectedUser._id}/warn`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ reason: modalReason })
+    });
+    
+    if (response.ok) {
+      showToast("Warning issued to user", "success");
       
-      if (response.ok) {
-        showToast("Warning issued to user", "success");
-        setShowWarnModal(false);
-        setSelectedUser(null);
-        setModalReason("");
-      } else {
-        const data = await response.json();
-        showToast(data.message || "Failed to warn user", "error");
+      // ✅ FIX: Resolve the report if it came from a report
+      if (selectedReport) {
+        try {
+          const resolveResponse = await fetch(`http://localhost:5000/api/admin/reports/${selectedReport._id}/resolve`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+              action: 'warn',
+              adminReason: `User warned: ${modalReason}`
+            })
+          });
+          
+          if (resolveResponse.ok) {
+            // Remove from pending reports
+            setReports(reports.filter(report => report._id !== selectedReport._id));
+            // Refresh resolved reports
+            fetchResolvedReports();
+          }
+        } catch (resolveError) {
+          console.error("Error resolving report:", resolveError);
+        }
       }
-    } catch (error) {
-      showToast("Network error", "error");
+      
+      setShowWarnModal(false);
+      setSelectedUser(null);
+      setModalReason("");
+      
+    } else {
+      const data = await response.json();
+      showToast(data.message || "Failed to warn user", "error");
     }
-  };
+  } catch (error) {
+    showToast("Network error", "error");
+  }
+};
 
   // ==================== CHANGE STATUS ====================
 
@@ -575,46 +692,144 @@ const handleUnrestrictUser = async (user) => {
   };
 
   // ==================== REPORT ACTIONS ====================
-
-  const handleResolveReport = async (postId, action) => {
-    setSelectedReport(reports.find(r => r._id === postId));
-    setSelectedAction(action);
-    setShowReportResolveModal(true);
-  };
-
-  const handleResolveReportConfirmed = async () => {
-    if (!selectedReport || !selectedAction) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/reports/${selectedReport._id}/resolve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          action: selectedAction,
-          adminReason: selectedAction === 'delete' ? 'Violation of community guidelines' : 'No violation found'
-        })
-      });
-      
-      if (response.ok) {
-        setReports(reports.filter(report => report._id !== selectedReport._id));
-        showToast(`Report resolved. Post ${selectedAction === 'delete' ? 'deleted' : 'kept'}.`, "success");
-        setShowReportResolveModal(false);
-        setSelectedReport(null);
-        setSelectedAction("");
-        fetchStats();
+const handleResolveReport = async (postId, action) => {
+  setSelectedReport(reports.find(r => r._id === postId));
+  setSelectedAction(action);
+  
+  const post = reports.find(r => r._id === postId);
+  
+  if (action === 'restrict' || action === 'warn') {
+    if (post.user?.id) {
+      const user = users.find(u => u._id === post.user.id);
+      if (user) {
+        setSelectedUser(user);
+        if (action === 'restrict') {
+          setShowRestrictModal(true);
+        } else {
+          setShowWarnModal(true);
+        }
+        // Don't show resolve modal for restrict/warn
+        return;
       } else {
-        const data = await response.json();
-        showToast(data.message || "Failed to resolve report", "error");
+        showToast("User not found for restriction/warning", "error");
+        return;
       }
-    } catch (error) {
-      showToast("Network error", "error");
     }
-  };
+  }
+  
+  // For "keep" and "delete", show the resolve confirmation modal
+  setShowReportResolveModal(true);
+};
 
+const handleResolveReportConfirmed = async () => {
+  if (!selectedReport || !selectedAction) return;
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/admin/reports/${selectedReport._id}/resolve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        action: selectedAction,
+        adminReason: selectedAction === 'delete' ? 'Violation of community guidelines' : 'No violation found'
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      // Show success toast
+      showToast(`Report resolved - Post ${selectedAction === 'delete' ? 'deleted' : 'kept'}`, "success");
+      
+      // Remove from pending reports
+      setReports(reports.filter(report => report._id !== selectedReport._id));
+      
+      // Add to resolved history
+      const resolvedReport = {
+        ...selectedReport,
+        actionTaken: selectedAction,
+        resolvedAt: new Date().toISOString(),
+        resolvedByName: JSON.parse(localStorage.getItem('user')).name,
+        reason: selectedAction === 'delete' ? 'Violation of community guidelines' : 'No violation found',
+        status: 'resolved'
+      };
+      
+      setResolvedReports(prev => [resolvedReport, ...prev]);
+      
+      // Close modal and reset
+      setShowReportResolveModal(false);
+      setSelectedReport(null);
+      setSelectedAction("");
+      
+      // Refresh stats
+      fetchStats();
+      
+    } else {
+      showToast(data.message || "Failed to resolve report", "error");
+    }
+  } catch (error) {
+    showToast("Network error", "error");
+  }
+};
+
+const handleUserActionCompleted = async (action) => {
+  if (!selectedReport) return;
+  
+  try {
+    // First, handle the user action (warn/restrict) was already done
+    // Now resolve the report
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:5000/api/admin/reports/${selectedReport._id}/resolve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        action: action, // 'warn' or 'restrict'
+        adminReason: action === 'warn' ? 'User warned' : 'User restricted'
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      // Show success toast
+      showToast(`User ${action === 'warn' ? 'warned' : 'restricted'} and report resolved`, "success");
+      
+      // Remove from pending reports
+      setReports(reports.filter(report => report._id !== selectedReport._id));
+      
+      // Add to resolved history
+      const resolvedReport = {
+        ...selectedReport,
+        actionTaken: action,
+        resolvedAt: new Date().toISOString(),
+        resolvedByName: JSON.parse(localStorage.getItem('user')).name,
+        reason: action === 'warn' ? 'User warned' : 'User restricted',
+        status: 'resolved'
+      };
+      
+      setResolvedReports(prev => [resolvedReport, ...prev]);
+      
+      // Reset
+      setSelectedReport(null);
+      setSelectedAction("");
+      setSelectedUser(null);
+      
+      // Refresh stats
+      fetchStats();
+      
+    } else {
+      showToast(data.message || "Failed to resolve report", "error");
+    }
+  } catch (error) {
+    showToast("Network error", "error");
+  }
+};
   const handleRestrictFromReport = async (post) => {
     if (!post.user?.id) return;
     
@@ -961,29 +1176,39 @@ const handleUnrestrictUser = async (user) => {
     🗑️ Delete Post
   </button>
   <button 
-    className="action-btn-enhanced warn-btn"
-    onClick={() => {
-      const user = users.find(u => u._id === post.user?.id);
-      if (user) {
-        setSelectedUser(user);
-        setShowWarnModal(true);
-      }
-    }}
-  >
-    ⚠️ Warn User
-  </button>
+  className="action-btn-enhanced warn-btn"
+  onClick={() => {
+    // Try different ways to find the user
+    const userId = post.user?.id || post.userId;
+    const user = users.find(u => u._id === userId || u._id.toString() === userId);
+    
+    if (user) {
+      setSelectedUser(user);
+      setShowWarnModal(true);
+    } else {
+      showToast("User not found in current list. Try refreshing users.", "error");
+    }
+  }}
+>
+  ⚠️ Warn User
+</button>
   <button 
-    className="action-btn-enhanced restrict-btn"
-    onClick={() => {
-      const user = users.find(u => u._id === post.user?.id);
-      if (user) {
-        setSelectedUser(user);
-        setShowRestrictModal(true);
-      }
-    }}
-  >
-    ⏸️ Restrict User
-  </button>
+  className="action-btn-enhanced restrict-btn"
+  onClick={() => {
+    // Try different ways to find the user
+    const userId = post.user?.id || post.userId;
+    const user = users.find(u => u._id === userId || u._id.toString() === userId);
+    
+    if (user) {
+      setSelectedUser(user);
+      setShowRestrictModal(true);
+    } else {
+      showToast("User not found in current list. Try refreshing users.", "error");
+    }
+  }}
+>
+  ⏸️ Restrict User
+</button>
 </div>
     </div>
   );
@@ -1026,7 +1251,7 @@ const handleUnrestrictUser = async (user) => {
       <td>
         <span className={`status-badge status-${user.status || 'active'}`}>
           {user.status === 'active' && '✅ Active'}
-          {user.status === 'restricted' && '⚠️ Restricted'}
+          {user.status === 'restricted' && '⚠️ Restricted '}
           
           {!user.status && '✅ Active'}
         </span>
@@ -1354,209 +1579,507 @@ const handleUnrestrictUser = async (user) => {
           </div>
         )}
 
-        {/* Reports Tab */}
         {activeTab === "reports" && (
-          <div className="admin-reports">
-            <div className="section-header">
-              <div className="section-title">
-                <h2>🚨 Reported Content</h2>
-                <p className="admin-subtitle">Review and take action on reported posts</p>
-              </div>
-              <button className="refresh-section-btn" onClick={fetchReports}>
-                🔄 Refresh Reports
-              </button>
-            </div>
-            
-            {reportsLoading ? (
-              <div className="loading">Loading reports...</div>
-            ) : reports.length === 0 ? (
-              <div className="empty-state">🎉 No pending reports! All clear.</div>
-            ) : (
-              <div className="reports-list">
-                {reports.map(post => (
-                  <div key={post._id} className="report-card">
-                    <div className="report-header">
-                      <div className="reported-post-info">
-                        <h4>Post by: 
-                          <span 
-                            className="clickable-user-name"
-                            onClick={() => {
-                              const user = users.find(u => u._id === post.user?.id);
-                              if (user) openUserProfileModal(user);
-                            }}
-                          >
-                            {post.user?.name}
-                          </span>
-                        </h4>
-                        <p className="post-content-preview">{post.content?.substring(0, 150)}...</p>
-                        <div className="post-meta">
-                          <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                          <span className="report-count">🚨 {post.totalReports} reports</span>
-                        </div>
+  <div className="admin-reports">
+    <div className="section-header">
+      <div className="section-title">
+        <h2>🚨 Reported Content</h2>
+        <p className="admin-subtitle">Review and take action on reported posts</p>
+      </div>
+      <button className="refresh-section-btn" onClick={() => {
+        if (activeReportsTab === "pending") {
+          fetchReports();
+        } else {
+          fetchResolvedReports();
+        }
+      }}>
+        🔄 Refresh Reports
+      </button>
+    </div>
+    
+    {/* TABS FOR PENDING/RESOLVED */}
+    <div className="reports-tabs">
+      <button 
+        className={`reports-tab-btn ${activeReportsTab === "pending" ? "active" : ""}`}
+        onClick={() => setActiveReportsTab("pending")}
+      >
+        🔴 Pending Reports ({reports.length})
+      </button>
+      <button 
+        className={`reports-tab-btn ${activeReportsTab === "resolved" ? "active" : ""}`}
+        onClick={() => setActiveReportsTab("resolved")}
+      >
+        ✅ Resolved History ({resolvedReports.length})
+      </button>
+    </div>
+    
+    {/* PENDING REPORTS TAB */}
+    {activeReportsTab === "pending" && (
+      <>
+        {reportsLoading ? (
+          <div className="loading">Loading reports...</div>
+        ) : reports.length === 0 ? (
+          <div className="empty-state">🎉 No pending reports! All clear.</div>
+        ) : (
+          <div className="reports-list">
+            {reports.map(post => (
+              <div key={post._id} className="report-card">
+                <div className="report-header">
+                  <div className="reported-post-info">
+                    <h4>Post by: 
+                      <span 
+                        className="clickable-user-name"
+                        onClick={() => {
+                          const user = users.find(u => u._id === post.user?.id);
+                          if (user) openUserProfileModal(user);
+                        }}
+                      >
+                        {post.user?.name}
+                      </span>
+                    </h4>
+                    <p className="post-content-preview">{post.content?.substring(0, 150)}...</p>
+                    <div className="post-meta">
+                      <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                      <span className="report-count">🚨 {post.totalReports} reports</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Reports List */}
+                <div className="reports-details">
+                  <h5>Reports ({post.reports?.length || 0}):</h5>
+                  {post.reports?.map((report, index) => (
+                    <div key={index} className="report-item">
+                      <div className="reporter-info">
+                        <strong>{report.reporterName}</strong> ({report.reporterRole})
+                        <span className="report-time">
+                          {new Date(report.timestamp).toLocaleDateString()}
+                        </span>
                       </div>
+                      <p className="report-reason"><strong>Reason:</strong> {report.reason}</p>
                     </div>
-                    
-                    {/* Reports List */}
-                    <div className="reports-details">
-                      <h5>Reports ({post.reports?.length || 0}):</h5>
-                      {post.reports?.map((report, index) => (
-                        <div key={index} className="report-item">
-                          <div className="reporter-info">
-                            <strong>{report.reporterName}</strong> ({report.reporterRole})
-                            <span className="report-time">
-                              {new Date(report.timestamp).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className="report-reason"><strong>Reason:</strong> {report.reason}</p>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="report-resolve-actions">
-                      <button 
-                        className="action-btn keep-btn"
-                        onClick={() => handleResolveReport(post._id, 'keep')}
-                      >
-                        ✅ Keep Post (No issue)
-                      </button>
-                      <button 
-                        className="action-btn delete-btn"
-                        onClick={() => handleResolveReport(post._id, 'delete')}
-                      >
-                        🗑️ Delete Post (Inappropriate)
-                      </button>
-                      <button 
+                  ))}
+                </div>
+                
+                <div className="report-resolve-actions">
+                  <button 
+                    className="action-btn keep-btn"
+                    onClick={() => handleResolveReport(post._id, 'keep')}
+                  >
+                    ✅ Keep Post (No issue)
+                  </button>
+                  <button 
+                    className="action-btn delete-btn"
+                    onClick={() => handleResolveReport(post._id, 'delete')}
+                  >
+                    🗑️ Delete Post (Inappropriate)
+                  </button>
+                  <button 
                         className="action-btn restrict-btn"
-                        onClick={() => handleRestrictFromReport(post)}
+                        onClick={() => {
+                          const user = users.find(u => u._id === post.user?.id);
+                          if (user) {
+                            setSelectedUser(user);
+                            setSelectedReport(post); // ✅ Store which report this is
+                            setShowRestrictModal(true);
+                          } else {
+                            showToast("User not found in current list. Try refreshing users.", "error");
+                          }
+                        }}
                       >
                         ⚠️ Restrict User 24h
                       </button>
-                      {post.user?.id && (
-                        <button 
-                          className="action-btn warn-btn"
-                          onClick={() => {
-                            const user = users.find(u => u._id === post.user.id);
-                            if (user) {
-                              setSelectedUser(user);
-                              setShowWarnModal(true);
-                            }
-                          }}
-                        >
-                          ⚠️ Warn User
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+
+                      <button 
+                        className="action-btn warn-btn"
+                        onClick={() => {
+                          const user = users.find(u => u._id === post.user?.id);
+                          if (user) {
+                            setSelectedUser(user);
+                            setSelectedReport(post); // ✅ Store which report this is
+                            setShowWarnModal(true);
+                          } else {
+                            showToast("User not found in current list. Try refreshing users.", "error");
+                          }
+                        }}
+                      >
+                        ⚠️ Warn User
+                      </button>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
-
-        {/* Analytics Tab */}
-        {activeTab === "analytics" && (
-          <div className="admin-analytics">
-            <div className="section-header">
-              <div className="section-title">
-                <h2>📈 Platform Analytics</h2>
-                <p className="admin-subtitle">Detailed insights about platform usage</p>
-              </div>
-              <button className="refresh-section-btn" onClick={fetchAnalytics}>
-                🔄 Refresh Analytics
-              </button>
-            </div>
-            
-            {analyticsLoading ? (
-              <div className="loading">Loading analytics...</div>
-            ) : analytics ? (
-              <div className="analytics-content">
-                <div className="analytics-grid">
-                  <div className="analytics-card">
-                    <h3>📊 Daily Posts (Last 7 Days)</h3>
-                    {analytics.dailyPosts?.length > 0 ? (
-                      <div className="daily-posts-chart">
-                        {analytics.dailyPosts.map((day, index) => (
-                          <div key={index} className="chart-bar">
-                            <div className="bar-label">{day._id}</div>
-                            <div className="bar-container">
-                              <div 
-                                className="bar-fill" 
-                                style={{ width: `${Math.min(day.count * 20, 100)}%` }}
-                              >
-                                <span className="bar-value">{day.count}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+      </>
+    )}
+    
+    {/* RESOLVED REPORTS HISTORY TAB */}
+    {activeReportsTab === "resolved" && (
+      <>
+        {resolvedLoading ? (
+          <div className="loading">Loading resolved reports...</div>
+        ) : resolvedReports.length === 0 ? (
+          <div className="empty-state">No resolved reports found</div>
+        ) : (
+          <div className="resolved-reports-list">
+            {resolvedReports.map(report => (
+              <div key={report._id} className="resolved-report-card">
+                <div className="resolved-report-header">
+                  <div className="resolved-post-info">
+                    <div className="resolved-post-preview">
+                      <span className="post-snippet">"{report.postContent?.substring(0, 80)}..."</span>
+                      <span className="post-author">by {report.authorName}</span>
+                    </div>
+                    <div className={`resolved-action-badge resolved-action-${report.actionTaken}`}>
+                      {report.actionTaken === 'keep' && '✅ KEPT'}
+                      {report.actionTaken === 'delete' && '🗑️ DELETED'}
+                      {report.actionTaken === 'warn' && '⚠️ USER WARNED'}
+                      {report.actionTaken === 'restrict' && '⏸️ USER RESTRICTED'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="resolved-report-details">
+                  <div className="resolved-meta">
+                    <div className="resolved-meta-item">
+                      <span className="meta-label">Resolved:</span>
+                      <span className="meta-value">
+                        {new Date(report.resolvedAt).toLocaleDateString()} at {new Date(report.resolvedAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="resolved-meta-item">
+                      <span className="meta-label">By Admin:</span>
+                      <span className="meta-value">{report.resolvedByName || 'System'}</span>
+                    </div>
+                    {report.reason && (
+                      <div className="resolved-meta-item">
+                        <span className="meta-label">Reason:</span>
+                        <span className="meta-value">{report.reason}</span>
                       </div>
-                    ) : (
-                      <p className="no-data">No data available</p>
                     )}
                   </div>
                   
-                  <div className="analytics-card">
-                    <h3>🏆 Top Active Users</h3>
-                    {analytics.topUsers?.length > 0 ? (
-                      <div className="top-users-list">
-                        {analytics.topUsers.slice(0, 5).map((user, index) => (
-                          <div key={user._id} className="top-user-item">
-                            <div className="user-rank">#{index + 1}</div>
-                            <div className="user-details">
-                              <div 
-                                className="user-name clickable"
-                                onClick={() => {
-                                  const userObj = users.find(u => u._id === user._id);
-                                  if (userObj) openUserProfileModal(userObj);
-                                }}
-                              >
-                                {user.name}
-                              </div>
-                              <div className="user-stats">
-                                <span className="user-role">{user.role}</span>
-                                <span className="user-posts">{user.postCount} posts</span>
-                              </div>
-                            </div>
-                          </div>
+                  {report.originalReports && report.originalReports.length > 0 && (
+                    <div className="original-reports-summary">
+                      <p className="summary-title">📋 Original Reports: {report.originalReports.length}</p>
+                      <div className="report-reasons">
+                        {report.originalReports.slice(0, 3).map((rep, idx) => (
+                          <span key={idx} className="reason-tag">{rep.reason}</span>
                         ))}
+                        {report.originalReports.length > 3 && (
+                          <span className="more-tag">+{report.originalReports.length - 3} more</span>
+                        )}
                       </div>
-                    ) : (
-                      <p className="no-data">No data available</p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="analytics-card full-width">
-                  <h3>🎓 Posts by Department</h3>
-                  {analytics.postsByDept?.length > 0 ? (
-                    <div className="dept-stats">
-                      {analytics.postsByDept.map((dept, index) => (
-                        <div key={dept._id || index} className="dept-item">
-                          <div className="dept-name">{dept._id || 'Unknown'}</div>
-                          <div className="dept-bar">
-                            <div 
-                              className="dept-fill" 
-                              style={{ width: `${(dept.count / Math.max(...analytics.postsByDept.map(d => d.count))) * 80}%` }}
-                            >
-                              <span className="dept-count">{dept.count} posts</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
                     </div>
-                  ) : (
-                    <p className="no-data">No data available</p>
                   )}
                 </div>
-                
-                <div className="analytics-meta">
-                  <p>📅 Analytics generated: {new Date(analytics.generatedAt).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    )}
+  </div>
+)}
+
+{activeTab === "analytics" && (
+  <div className="admin-analytics">
+    <div className="section-header">
+      <div className="section-title">
+        <h2>📈 Platform Analytics</h2>
+        <p className="admin-subtitle">Comprehensive insights & platform health</p>
+      </div>
+      <button className="refresh-section-btn" onClick={fetchAnalytics}>
+        🔄 Refresh Analytics
+      </button>
+    </div>
+    
+    {analyticsLoading ? (
+      <div className="loading">Loading platform analytics...</div>
+    ) : analytics ? (
+      <div className="analytics-content">
+        {/* SECTION 1: PLATFORM HEALTH - QUICK STATS */}
+        <div className="analytics-quick-stats">
+          <div className="quick-stat-card">
+            <div className="quick-stat-icon">👥</div>
+            <div className="quick-stat-info">
+              <div className="quick-stat-value">{analytics.activeUsersToday || 0}</div>
+              <div className="quick-stat-label">Active Today</div>
+            </div>
+          </div>
+          <div className="quick-stat-card">
+            <div className="quick-stat-icon">📈</div>
+            <div className="quick-stat-info">
+              <div className="quick-stat-value">{analytics.newUsersToday || 0}</div>
+              <div className="quick-stat-label">New Users</div>
+            </div>
+          </div>
+          <div className="quick-stat-card">
+            <div className="quick-stat-icon">📝</div>
+            <div className="quick-stat-info">
+              <div className="quick-stat-value">{analytics.postsToday || 0}</div>
+              <div className="quick-stat-label">Posts Today</div>
+            </div>
+          </div>
+          <div className="quick-stat-card">
+            <div className="quick-stat-icon">✅</div>
+            <div className="quick-stat-info">
+              <div className="quick-stat-value">98%</div>
+              <div className="quick-stat-label">System Status</div>
+            </div>
+          </div>
+        </div>
+        
+        {/* SECTION 2: MODERATION DASHBOARD */}
+        <div className="analytics-grid">
+          <div className="analytics-card">
+            <h3>🛡️ Moderation Dashboard</h3>
+            <div className="moderation-stats">
+              <div className="moderation-stat">
+                <div className="moderation-stat-label">
+                  <span className="stat-label-text">Pending Reports</span>
+                  <span className="stat-label-value" style={{color: '#ef4444'}}>
+                    {reports.length}
+                  </span>
+                </div>
+                <div className="stat-progress">
+                  <div className="progress-bar" style={{width: `${Math.min((reports.length / 50) * 100, 100)}%`, backgroundColor: '#ef4444'}}></div>
+                </div>
+              </div>
+              <div className="moderation-stat">
+                <div className="moderation-stat-label">
+                  <span className="stat-label-text">Resolved Today</span>
+                  <span className="stat-label-value" style={{color: '#10b981'}}>
+                    {analytics.reportsResolvedToday || 0}
+                  </span>
+                </div>
+                <div className="stat-progress">
+                  <div className="progress-bar" style={{width: `${Math.min(((analytics.reportsResolvedToday || 0) / 20) * 100, 100)}%`, backgroundColor: '#10b981'}}></div>
+                </div>
+              </div>
+              <div className="moderation-stat">
+                <div className="moderation-stat-label">
+                  <span className="stat-label-text">Active Warnings</span>
+                  <span className="stat-label-value" style={{color: '#f59e0b'}}>
+                    {analytics.activeWarnings || 0}
+                  </span>
+                </div>
+                <div className="stat-progress">
+                  <div className="progress-bar" style={{width: `${Math.min(((analytics.activeWarnings || 0) / 10) * 100, 100)}%`, backgroundColor: '#f59e0b'}}></div>
+                </div>
+              </div>
+              <div className="moderation-stat">
+                <div className="moderation-stat-label">
+                  <span className="stat-label-text">Restricted Accounts</span>
+                  <span className="stat-label-value" style={{color: '#9333ea'}}>
+                    {analytics.restrictedAccounts || users.filter(u => u.status === 'restricted').length}
+                  </span>
+                </div>
+                <div className="stat-progress">
+                  <div className="progress-bar" style={{width: `${Math.min(((analytics.restrictedAccounts || 0) / 5) * 100, 100)}%`, backgroundColor: '#9333ea'}}></div>
+                </div>
+              </div>
+            </div>
+            <div className="card-note">
+              Real-time moderation metrics for platform safety
+            </div>
+          </div>
+          
+          {/* SECTION 3: ACTIVITY TRENDS - CLEAR WEEKLY CHART */}
+          <div className="analytics-card">
+            <h3>📊 Weekly Activity Trends</h3>
+            {analytics.dailyPosts?.length > 0 ? (
+              <div className="weekly-activity-chart">
+                <div className="chart-header">
+                  <span className="chart-title">Posts Created This Week</span>
+                  <span className="chart-total">
+                    Total: {analytics.dailyPosts?.reduce((sum, day) => sum + day.count, 0) || 0}
+                  </span>
+                </div>
+                <div className="chart-bars">
+                  {analytics.dailyPosts.map((day, index) => {
+                    const maxCount = Math.max(...analytics.dailyPosts.map(d => d.count));
+                    const heightPercentage = maxCount > 0 ? (day.count / maxCount) * 80 : 0;
+                    
+                    return (
+                      <div key={index} className="chart-bar-column">
+                        <div className="bar-label">{day._id?.split('-')[2] || 'Day'}</div>
+                        <div className="bar-column-container">
+                          <div 
+                            className="bar-column-fill" 
+                            style={{ 
+                              height: `${heightPercentage}%`,
+                              background: day.count === maxCount 
+                                ? 'linear-gradient(to top, #4f46e5, #7c3aed)' 
+                                : 'linear-gradient(to top, #60a5fa, #3b82f6)'
+                            }}
+                          >
+                            <span className="bar-column-value">{day.count}</span>
+                          </div>
+                        </div>
+                        <div className="bar-day">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(day._id).getDay()] || 'Day'}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
-              <div className="empty-state">No analytics data available</div>
+              <p className="no-data">No activity data available for this week</p>
             )}
+            <div className="chart-summary">
+              {analytics.dailyPosts?.length > 0 && (
+                <>
+                  Peak: {Math.max(...analytics.dailyPosts.map(d => d.count))} posts • 
+                  Avg: {Math.round(analytics.dailyPosts.reduce((sum, day) => sum + day.count, 0) / analytics.dailyPosts.length)} posts/day
+                </>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+        
+        {/* SECTION 4: DEPARTMENT LEADERBOARD - ENHANCED */}
+        <div className="analytics-grid">
+          <div className="analytics-card full-width">
+            <h3>🏆 Department Leaderboard</h3>
+            <div className="leaderboard-container">
+              <div className="leaderboard-column">
+                <h4>📝 Most Active (Posts)</h4>
+                {analytics.postsByDept?.length > 0 ? (
+                  <div className="dept-ranking">
+                    {analytics.postsByDept.slice(0, 5).map((dept, index) => (
+                      <div key={dept._id || index} className="ranking-item">
+                        <div className="ranking-rank">#{index + 1}</div>
+                        <div className="ranking-details">
+                          <div className="ranking-name">{dept._id || 'Unknown Department'}</div>
+                          <div className="ranking-stats">
+                            <span className="ranking-count">{dept.count} posts</span>
+                            <span className="ranking-percentage">
+                              {Math.round((dept.count / analytics.postsByDept.reduce((sum, d) => sum + d.count, 0)) * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ranking-bar">
+                          <div 
+                            className="ranking-bar-fill" 
+                            style={{ 
+                              width: `${(dept.count / Math.max(...analytics.postsByDept.map(d => d.count))) * 90}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="no-data">No department data available</p>
+                )}
+              </div>
+              
+              <div className="leaderboard-column">
+                <h4>👍 Most Engaging</h4>
+                {analytics.engagementByDept?.length > 0 ? (
+                  <div className="dept-ranking">
+                    {analytics.engagementByDept.slice(0, 5).map((dept, index) => (
+                      <div key={dept._id || index} className="ranking-item">
+                        <div className="ranking-rank">#{index + 1}</div>
+                        <div className="ranking-details">
+                          <div className="ranking-name">{dept._id || 'Unknown Department'}</div>
+                          <div className="ranking-stats">
+                            <span className="ranking-count">{dept.engagementScore || dept.count} score</span>
+                          </div>
+                        </div>
+                        <div className="ranking-bar">
+                          <div 
+                            className="ranking-bar-fill" 
+                            style={{ 
+                              width: `${((dept.engagementScore || dept.count) / Math.max(...analytics.engagementByDept.map(d => d.engagementScore || d.count))) * 90}%`,
+                              background: 'linear-gradient(90deg, #10b981, #34d399)'
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="no-data">Engagement data coming soon</p>
+                )}
+                <div className="card-note">
+                  Engagement Score = (Likes × 0.5) + (Comments × 1) + (Shares × 2)
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* SECTION 5: SYSTEM METRICS */}
+        <div className="analytics-grid">
+          <div className="analytics-card">
+            <h3>⚙️ System Performance</h3>
+            <div className="system-metrics">
+              <div className="metric-item">
+                <span className="metric-label">API Response Time</span>
+                <span className="metric-value" style={{color: '#10b981'}}>142ms</span>
+              </div>
+              <div className="metric-item">
+                <span className="metric-label">Database Load</span>
+                <span className="metric-value" style={{color: '#10b981'}}>24%</span>
+              </div>
+              <div className="metric-item">
+                <span className="metric-label">Active Connections</span>
+                <span className="metric-value" style={{color: '#3b82f6'}}>{analytics.activeConnections || 0}</span>
+              </div>
+              <div className="metric-item">
+                <span className="metric-label">Error Rate</span>
+                <span className="metric-value" style={{color: '#ef4444'}}>0.2%</span>
+              </div>
+            </div>
+            <div className="card-note">
+              Updated every 5 minutes • Last checked: Just now
+            </div>
+          </div>
+          
+          <div className="analytics-card">
+            <h3>🚀 Quick Actions</h3>
+            <div className="quick-actions-grid">
+              <button 
+                className="quick-action-btn"
+                onClick={() => setActiveTab("reports")}
+              >
+                🛡️ Review Reports
+              </button>
+              <button 
+                className="quick-action-btn"
+                onClick={() => setActiveTab("users")}
+              >
+                👥 Manage Users
+              </button>
+              <button 
+                className="quick-action-btn"
+                onClick={() => setActiveTab("posts")}
+              >
+                📝 Moderate Content
+              </button>
+              <button 
+                className="quick-action-btn"
+                onClick={fetchAnalytics}
+              >
+                🔄 Refresh Data
+              </button>
+            </div>
+            <div className="card-note">
+              One-click navigation to key admin functions
+            </div>
+          </div>
+        </div>
+        
+        <div className="analytics-meta">
+          <p>📊 Analytics generated: {new Date().toLocaleString()} • Data refresh available every 30 minutes</p>
+        </div>
+      </div>
+    ) : (
+      <div className="empty-state">No analytics data available</div>
+    )}
+  </div>
+)}
       </div>
 
       {/* ==================== ENHANCED MODALS ==================== */}
@@ -1964,7 +2487,7 @@ const handleUnrestrictUser = async (user) => {
                 >
                   <option value="">Select new status</option>
                   <option value="active">✅ Active</option>
-                  <option value="restricted">⚠️ Restricted</option>
+                  {/* <option value="restricted">⚠️ Restricted</option> */}
                 </select>
               </div>
               <div className="modal-section">

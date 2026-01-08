@@ -389,6 +389,7 @@ app.use('/api/explore', (req, res, next) => {
   next();
 }, exploreRoutes);
 
+
 // ==================== AUTH ROUTES ====================
 
 // Register with Cloudinary
@@ -465,6 +466,13 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
       status: 'active', // active, suspended, banned, restricted
       restrictedUntil: null, // Date when restriction ends
       restrictionReason: '',
+      restrictionDetails: { // ← ADD THIS OBJECT
+        isRestricted: false,
+        restrictedUntil: null,
+        restrictionReason: '',
+        restrictionDuration: '',
+        restrictedAt: null
+      },
       lastLogin: null,
       loginCount: 0,
       department: department || facultyDepartment || '', // Unified department field
@@ -587,7 +595,11 @@ app.post("/api/auth/login", async (req, res) => {
       year: user.year || '',
       employeeId: user.employeeId || '',
       facultyDepartment: user.facultyDepartment || '',
-      designation: user.designation || ''
+      designation: user.designation || '',
+      status: user.status || 'active',
+  restrictedUntil: user.restrictedUntil || null,
+  restrictionReason: user.restrictionReason || '',
+  restrictionDetails: user.restrictionDetails || { isRestricted: false }
     };
 
     res.json({
@@ -3617,117 +3629,7 @@ app.get("/api/admin/reports", auth, requireAdmin, async (req, res) => {
   }
 });
 
-// Resolve report (Admin only - mark as reviewed) - WITH NOTIFICATIONS TO ALL PARTIES
-app.post("/api/admin/reports/:postId/resolve", auth, requireAdmin, async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const { action, adminReason } = req.body; // 'keep', 'delete'
 
-    // Validate postId
-    if (!ObjectId.isValid(postId)) {
-      return res.status(400).json({ message: 'Invalid post ID' });
-    }
-
-    const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
-    if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
-    }
-
-    // Update all reports for this post as resolved
-    await db.collection('posts').updateOne(
-      { _id: new ObjectId(postId) },
-      { 
-        $set: { 
-          isReported: false,
-          "reports.$[].status": "resolved"
-        }
-      }
-    );
-
-    // If action is 'delete', delete the post and notify
-    if (action === 'delete') {
-      // Delete associated media from Cloudinary
-      if (post.media && post.media.length > 0) {
-        for (const mediaItem of post.media) {
-          try {
-            await cloudinary.uploader.destroy(mediaItem.publicId, {
-              resource_type: mediaItem.type === 'video' ? 'video' : 'image'
-            });
-            console.log(`Deleted media from Cloudinary: ${mediaItem.publicId}`);
-          } catch (cloudinaryError) {
-            console.error(`Error deleting media from Cloudinary: ${cloudinaryError.message}`);
-          }
-        }
-      }
-      
-      await db.collection('posts').deleteOne({ _id: new ObjectId(postId) });
-      
-      // Notify post owner
-      await createNotification({
-        recipientId: post.userId.toString(),
-        senderId: req.user.userId,
-        type: "post_deleted",
-        postId,
-        message: `🗑️ Your post was removed after review. Reason: ${adminReason || "Multiple user reports confirmed inappropriate content"}`
-      });
-      
-      // Notify all reporters
-      if (post.reports && post.reports.length > 0) {
-        for (const report of post.reports) {
-          if (report.userId !== req.user.userId) {
-            await createNotification({
-              recipientId: report.userId,
-              senderId: req.user.userId,
-              type: "report_resolved",
-              postId,
-              message: `✅ Thank you for reporting. The post was removed. Admin: "${adminReason || "Content violated guidelines"}"`
-            });
-          }
-        }
-      }
-      
-      res.json({ 
-        message: 'Report resolved. Post deleted.',
-        action: 'delete'
-      });
-    } 
-    // If action is 'keep', notify all parties
-    else if (action === 'keep') {
-      // Notify post owner
-      await createNotification({
-        recipientId: post.userId.toString(),
-        senderId: req.user.userId,
-        type: "post_approved",
-        postId,
-        message: `✅ Your post was reviewed and approved. It doesn't violate guidelines.`
-      });
-      
-      // Notify all reporters
-      if (post.reports && post.reports.length > 0) {
-        for (const report of post.reports) {
-          if (report.userId !== req.user.userId) {
-            await createNotification({
-              recipientId: report.userId,
-              senderId: req.user.userId,
-              type: "report_resolved",
-              postId,
-              message: `ℹ️ Your report was reviewed. The post was kept as it doesn't violate guidelines.`
-            });
-          }
-        }
-      }
-      
-      res.json({ 
-        message: 'Report resolved. Post kept.',
-        action: 'keep'
-      });
-    } else {
-      return res.status(400).json({ message: 'Invalid action. Use "keep" or "delete"' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
 
 // ==================== USER WARNINGS SYSTEM ====================
 
@@ -3823,6 +3725,222 @@ app.get("/api/admin/users/:userId/warnings", auth, requireAdmin, async (req, res
   }
 });
 
+// Save resolved reports to separate collection - COMPLETE VERSION
+app.post("/api/admin/reports/:postId/resolve", auth, requireAdmin, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { action, adminReason } = req.body; // 'keep', 'delete', 'warn', 'restrict'
+
+    // Validate postId
+    if (!ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
+    const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Get user details
+    const user = await db.collection('users').findOne({ _id: new ObjectId(post.userId) });
+    
+    // Save to resolved reports collection FOR ALL ACTIONS
+    const resolvedReport = {
+      postId: post._id,
+      postContent: post.content,
+      postType: post.type || 'text',
+      authorId: post.userId,
+      authorName: user?.name || "Unknown User",
+      reports: post.reports || [],
+      totalReports: (post.reports || []).length,
+      actionTaken: action, // 'keep', 'delete', 'warn', 'restrict'
+      adminReason: adminReason,
+      resolvedBy: req.user.userId,
+      resolvedByName: req.admin.name,
+      resolvedAt: new Date(),
+      createdAt: post.createdAt,
+      originalReports: post.reports || [] // Keep original reports
+    };
+
+    await db.collection('resolvedReports').insertOne(resolvedReport);
+
+    // Clear reports array and mark as not reported
+    await db.collection('posts').updateOne(
+      { _id: new ObjectId(postId) },
+      { 
+        $set: { 
+          isReported: false,
+          reports: [] // Clear the reports array entirely
+        }
+      }
+    );
+        
+    // If action is 'delete', delete the post
+    if (action === 'delete') {
+      // Delete associated media from Cloudinary
+      if (post.media && post.media.length > 0) {
+        for (const mediaItem of post.media) {
+          try {
+            await cloudinary.uploader.destroy(mediaItem.publicId, {
+              resource_type: mediaItem.type === 'video' ? 'video' : 'image'
+            });
+          } catch (cloudinaryError) {
+            console.error(`Error deleting media: ${cloudinaryError.message}`);
+          }
+        }
+      }
+      
+      await db.collection('posts').deleteOne({ _id: new ObjectId(postId) });
+    }
+
+    // Better notifications based on action
+    if (action === 'keep') {
+      // Notify post owner
+      await createNotification({
+        recipientId: post.userId.toString(),
+        senderId: req.user.userId,
+        type: "post_approved",
+        postId: postId,
+        message: `✅ Your post was reviewed and approved. It doesn't violate guidelines.`
+      });
+      
+      // Notify all reporters
+      if (post.reports && post.reports.length > 0) {
+        for (const report of post.reports) {
+          if (report.userId !== req.user.userId) {
+            await createNotification({
+              recipientId: report.userId,
+              senderId: req.user.userId,
+              type: "report_resolved",
+              postId: postId,
+              message: `ℹ️ Your report was reviewed. The post was kept as it doesn't violate guidelines.`
+            });
+          }
+        }
+      }
+    } 
+    else if (action === 'delete') {
+      // Notify post owner
+      await createNotification({
+        recipientId: post.userId.toString(),
+        senderId: req.user.userId,
+        type: "post_deleted",
+        postId: postId,
+        message: `🗑️ Your post was removed after review. Reason: ${adminReason || "Multiple user reports confirmed inappropriate content"}`
+      });
+      
+      // Notify all reporters
+      if (post.reports && post.reports.length > 0) {
+        for (const report of post.reports) {
+          if (report.userId !== req.user.userId) {
+            await createNotification({
+              recipientId: report.userId,
+              senderId: req.user.userId,
+              type: "report_resolved",
+              postId: postId,
+              message: `✅ Thank you for reporting. The post was removed. Admin: "${adminReason || "Content violated guidelines"}"`
+            });
+          }
+        }
+      }
+    }
+    else if (action === 'warn') {
+      // Notify post owner
+      await createNotification({
+        recipientId: post.userId.toString(),
+        senderId: req.user.userId,
+        type: "warning",
+        postId: postId,
+        message: `⚠️ You received a warning for your post. Reason: ${adminReason || "Post violated guidelines"}`
+      });
+    }
+    else if (action === 'restrict') {
+      // Notify post owner
+      await createNotification({
+        recipientId: post.userId.toString(),
+        senderId: req.user.userId,
+        type: "account_restricted",
+        postId: postId,
+        message: `⏸️ Your account has been restricted. Reason: ${adminReason || "Repeated violations"}`
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: `Report resolved. ${action === 'delete' ? 'Post deleted' : action === 'keep' ? 'Post kept' : action === 'warn' ? 'User warned' : 'User restricted'}.`,
+      action: action,
+      resolvedReport: resolvedReport // Send back for frontend
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+
+// Get resolved reports (Admin only)
+app.get("/api/admin/reports/resolved", auth, requireAdmin, async (req, res) => {
+  try {
+    // Get resolved reports with pagination
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const resolvedReports = await db.collection('resolvedReports')
+      .find()
+      .sort({ resolvedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .toArray();
+    
+    // Get total count for pagination
+    const totalReports = await db.collection('resolvedReports').countDocuments();
+    
+    // Get admin details for each resolved report
+    const reportsWithAdminDetails = await Promise.all(
+      resolvedReports.map(async (report) => {
+        let adminName = report.resolvedByName;
+        let adminEmail = '';
+        
+        // Try to get admin details if only ID is stored
+        if (report.resolvedBy && ObjectId.isValid(report.resolvedBy)) {
+          const admin = await db.collection('users').findOne(
+            { _id: new ObjectId(report.resolvedBy) },
+            { projection: { name: 1, email: 1 } }
+          );
+          if (admin) {
+            adminName = admin.name;
+            adminEmail = admin.email;
+          }
+        }
+        
+        return {
+          ...report,
+          resolvedByName: adminName,
+          resolvedByEmail: adminEmail,
+          postId: report.postId?.toString(),
+          authorId: report.authorId?.toString()
+        };
+      })
+    );
+    
+    res.json({
+      success: true,
+      reports: reportsWithAdminDetails,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalReports,
+        totalPages: Math.ceil(totalReports / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching resolved reports:", error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
 // ==================== NEW ADMIN ENDPOINTS ====================
 
 // Update user role (Admin only)
@@ -4319,13 +4437,24 @@ app.get("/api/admin/users/search", auth, requireAdmin, async (req, res) => {
 
 // ==================== ADMIN ANALYTICS ====================
 
-// Get detailed analytics (Admin only)
+// Get detailed analytics with moderation stats (Admin only)
 app.get("/api/admin/analytics", auth, requireAdmin, async (req, res) => {
   try {
-    // Daily posts for last 7 days
+    // Get today's date for daily stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get yesterday for comparison
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    // Get 7 days ago for weekly stats
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // ==================== DAILY ACTIVITY STATS ====================
     
+    // Daily posts for last 7 days
     const dailyPosts = await db.collection('posts')
       .aggregate([
         {
@@ -4360,6 +4489,66 @@ app.get("/api/admin/analytics", auth, requireAdmin, async (req, res) => {
         { $sort: { _id: 1 } }
       ]).toArray();
 
+    // ==================== MODERATION STATS ====================
+    
+    // Reports resolved today
+    const reportsResolvedToday = await db.collection('resolvedReports')
+      .countDocuments({
+        resolvedAt: { $gte: today }
+      });
+
+    // Total resolved reports
+    const totalResolvedReports = await db.collection('resolvedReports')
+      .countDocuments();
+
+    // Pending reports (from posts collection)
+    const pendingReports = await db.collection('posts')
+      .countDocuments({ 
+        isReported: true,
+        "reports.0": { $exists: true }
+      });
+
+    // Active warnings (sum of warningCount from all users)
+    const activeWarningsResult = await db.collection('users')
+      .aggregate([
+        { 
+          $group: { 
+            _id: null, 
+            totalWarnings: { $sum: "$warningCount" } 
+          } 
+        }
+      ]).toArray();
+    const activeWarnings = activeWarningsResult[0]?.totalWarnings || 0;
+
+    // Restricted accounts
+    const restrictedAccounts = await db.collection('users')
+      .countDocuments({ 
+        status: 'restricted',
+        restrictedUntil: { $gt: new Date() }
+      });
+
+    // ==================== PLATFORM GROWTH STATS ====================
+    
+    // New users today
+    const newUsersToday = await db.collection('users')
+      .countDocuments({ createdAt: { $gte: today } });
+
+    // Total users
+    const totalUsers = await db.collection('users').countDocuments();
+
+    // Posts created today
+    const postsToday = await db.collection('posts')
+      .countDocuments({ createdAt: { $gte: today } });
+
+    // Total posts
+    const totalPosts = await db.collection('posts').countDocuments();
+
+    // Active users today (users who logged in today)
+    const activeUsersToday = await db.collection('users')
+      .countDocuments({ lastLogin: { $gte: today } });
+
+    // ==================== CONTENT STATS ====================
+    
     // Top active users
     const topUsers = await db.collection('users')
       .aggregate([
@@ -4372,12 +4561,32 @@ app.get("/api/admin/analytics", auth, requireAdmin, async (req, res) => {
           }
         },
         {
+          $lookup: {
+            from: "connectionHistory",
+            localField: "_id",
+            foreignField: "userId",
+            as: "connections"
+          }
+        },
+        {
           $project: {
+            _id: 1,
             name: 1,
             email: 1,
             role: 1,
+            profilePhoto: 1,
             postCount: { $size: "$userPosts" },
-            createdAt: 1
+            connectionCount: { 
+              $size: { 
+                $filter: {
+                  input: "$connections",
+                  as: "conn",
+                  cond: { $eq: ["$$conn.type", "connected"] }
+                }
+              }
+            },
+            createdAt: 1,
+            lastLogin: 1
           }
         },
         { $sort: { postCount: -1 } },
@@ -4417,16 +4626,118 @@ app.get("/api/admin/analytics", auth, requireAdmin, async (req, res) => {
         { $sort: { count: -1 } }
       ]).toArray();
 
+    // Engagement by department (posts + likes)
+    const engagementByDept = await db.collection('posts')
+      .aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        { $unwind: "$user" },
+        {
+          $group: {
+            _id: "$user.department",
+            postCount: { $sum: 1 },
+            totalLikes: { $sum: { $size: { $ifNull: ["$likes", []] } } },
+            totalComments: { $sum: { $size: { $ifNull: ["$comments", []] } } }
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            postCount: 1,
+            totalLikes: 1,
+            totalComments: 1,
+            engagementScore: {
+              $add: [
+                { $multiply: ["$postCount", 2] },
+                { $multiply: ["$totalLikes", 0.5] },
+                { $multiply: ["$totalComments", 1] }
+              ]
+            }
+          }
+        },
+        { $sort: { engagementScore: -1 } },
+        { $limit: 10 }
+      ]).toArray();
+
+    // ==================== SYSTEM STATS ====================
+    
+    // Recent activity (last 24 hours)
+    const last24Hours = new Date();
+    last24Hours.setHours(last24Hours.getHours() - 24);
+    
+    const recentActivity = {
+      posts: await db.collection('posts').countDocuments({ createdAt: { $gte: last24Hours } }),
+      connections: await db.collection('connectionHistory').countDocuments({ 
+        date: { $gte: last24Hours },
+        type: 'connected'
+      }),
+      logins: await db.collection('users').countDocuments({ lastLogin: { $gte: last24Hours } }),
+      reports: await db.collection('posts').countDocuments({ 
+        isReported: true,
+        "reports.timestamp": { $gte: last24Hours }
+      })
+    };
+
+    // ==================== RESPONSE ====================
+    
     res.json({
+      // Daily trends
       dailyPosts,
       dailyConnections,
+      
+      // Moderation stats
+      moderationStats: {
+        pendingReports,
+        reportsResolvedToday,
+        totalResolvedReports,
+        activeWarnings,
+        restrictedAccounts,
+        resolutionRate: totalResolvedReports > 0 ? 
+          Math.round((reportsResolvedToday / (pendingReports + reportsResolvedToday)) * 100) : 0
+      },
+      
+      // Platform growth
+      platformStats: {
+        newUsersToday,
+        totalUsers,
+        postsToday,
+        totalPosts,
+        activeUsersToday,
+        growthRate: totalUsers > 0 ? 
+          Math.round((newUsersToday / totalUsers) * 10000) / 100 : 0 // Percentage with 2 decimals
+      },
+      
+      // Content stats
       topUsers,
       postsByType,
       postsByDept,
-      generatedAt: new Date()
+      engagementByDept,
+      
+      // Activity stats
+      recentActivity,
+      
+      // Meta
+      generatedAt: new Date(),
+      timeRange: {
+        today: today.toISOString(),
+        last7Days: sevenDaysAgo.toISOString(),
+        last24Hours: last24Hours.toISOString()
+      }
     });
+    
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error fetching analytics:", error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error fetching analytics', 
+      error: error.message 
+    });
   }
 });
 
@@ -4641,7 +4952,6 @@ app.get("/api/test", async (req, res) => {
     res.status(500).json({ message: 'Database error', error: error.message });
   }
 });
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("❌ Global Error:", err);
