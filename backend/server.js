@@ -1,4 +1,4 @@
-// server.js - FINAL MERGED VERSION WITH ALL IMPROVEMENTS
+// server.js - FINAL MERGED VERSION WITH ALL IMPROVEMENTS - FIXED SHARES ERROR & ALL FEEDS
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
@@ -174,6 +174,9 @@ const connectDB = async () => {
     await db.collection('connectionHistory').createIndex({ userId: 1, date: -1 }); // For connection history
     await db.collection('connectionHistory').createIndex({ userId: 1, targetUserId: 1 }); // For duplicate prevention
     
+    // FIX: Run migration to fix the shares field in existing posts
+    await migrateSharesField();
+    
     // Also set on app for consistency
     app.set('db', db);
     
@@ -182,6 +185,48 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
+// Migration function to fix shares field
+const migrateSharesField = async () => {
+  try {
+    console.log("🔄 Running migration to fix shares field...");
+    
+    // Find posts where shares is not an array
+    const postsWithInvalidShares = await db.collection('posts').find({
+      $or: [
+        { shares: { $type: "number" } }, // shares is a number
+        { shares: { $type: "string" } }, // shares is a string
+        { shares: { $exists: false } }, // shares doesn't exist
+        { shares: null } // shares is null
+      ]
+    }).toArray();
+    
+    console.log(`Found ${postsWithInvalidShares.length} posts with invalid shares field`);
+    
+    // Fix each post
+    for (const post of postsWithInvalidShares) {
+      try {
+        await db.collection('posts').updateOne(
+          { _id: post._id },
+          { 
+            $set: { 
+              shares: [], // Set to empty array
+              shareCount: typeof post.shares === 'number' ? post.shares : 0 // Preserve count if it was a number
+            }
+          }
+        );
+        console.log(`Fixed post ${post._id}: shares field`);
+      } catch (error) {
+        console.error(`Error fixing post ${post._id}:`, error.message);
+      }
+    }
+    
+    console.log("✅ Migration completed successfully");
+  } catch (error) {
+    console.error("Error running migration:", error);
+  }
+};
+
 connectDB();
 
 // Make db available to routes
@@ -268,12 +313,75 @@ function timeAgo(date) {
 // ----------------- Notifications helper -----------------
 const createNotification = async ({ recipientId, senderId, type, postId = null, message }) => {
   try {
+    // Get sender info first
+    const sender = await db.collection("users").findOne({ _id: new ObjectId(senderId) });
+    
+    // Format message based on type
+    let formattedMessage = message;
+    if (!formattedMessage) {
+      switch(type) {
+        case "post_shared":
+          formattedMessage = `${sender?.name || "Someone"} shared a post with you`;
+          break;
+        case "like":
+          formattedMessage = `${sender?.name || "Someone"} liked your post`;
+          break;
+        case "comment":
+          formattedMessage = `${sender?.name || "Someone"} commented on your post`;
+          break;
+        case "connection_request":
+          formattedMessage = `${sender?.name || "Someone"} sent you a connection request`;
+          break;
+        case "connection_accepted":
+          formattedMessage = `${sender?.name || "Someone"} accepted your connection request`;
+          break;
+        case "event_rsvp":
+          formattedMessage = `${sender?.name || "Someone"} RSVP'd to your event`;
+          break;
+        case "poll_vote":
+          formattedMessage = `${sender?.name || "Someone"} voted on your poll`;
+          break;
+        case "post_reported":
+          formattedMessage = `${sender?.name || "Someone"} reported your post`;
+          break;
+        case "post_deleted":
+          formattedMessage = `Your post was removed by admin`;
+          break;
+        case "warning":
+          formattedMessage = `You received a warning from admin`;
+          break;
+        case "account_restricted":
+          formattedMessage = `Your account has been restricted by admin`;
+          break;
+        case "account_unrestricted":
+          formattedMessage = `Your account restriction has been removed`;
+          break;
+        case "role_changed":
+          formattedMessage = `Your role has been changed by admin`;
+          break;
+        case "account_status":
+          formattedMessage = `Your account status has been updated by admin`;
+          break;
+        case "account_deleted":
+          formattedMessage = `Your account was deleted by admin`;
+          break;
+        case "post_approved":
+          formattedMessage = `Your post was reviewed and approved by admin`;
+          break;
+        case "report_resolved":
+          formattedMessage = `Your report has been resolved by admin`;
+          break;
+        default:
+          formattedMessage = `You have a new notification`;
+      }
+    }
+
     const notification = {
       recipientId: new ObjectId(recipientId),
       senderId: new ObjectId(senderId),
       type,
       postId: postId ? new ObjectId(postId) : null,
-      message,
+      message: formattedMessage,
       read: false,
       createdAt: new Date()
     };
@@ -281,14 +389,13 @@ const createNotification = async ({ recipientId, senderId, type, postId = null, 
     const result = await db.collection("notifications").insertOne(notification);
 
     // populate sender info to send to client
-    const sender = await db.collection("users").findOne({ _id: new ObjectId(senderId) });
     const payload = {
       id: result.insertedId,
       recipientId,
       senderId,
       type,
       postId,
-      message,
+      message: formattedMessage,
       read: false,
       createdAt: notification.createdAt,
       userName: sender?.name || "Campus Admin",
@@ -389,7 +496,6 @@ app.use('/api/explore', (req, res, next) => {
   next();
 }, exploreRoutes);
 
-
 // ==================== AUTH ROUTES ====================
 
 // Register with Cloudinary
@@ -476,6 +582,16 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
       lastLogin: null,
       loginCount: 0,
       department: department || facultyDepartment || '', // Unified department field
+      // Permissions for restricted users
+      permissions: {
+        canPost: true,
+        canComment: true,
+        canEditProfile: true,
+        canSendRequests: true,
+        canAcceptRequests: true,
+        canLike: true,
+        canShare: true
+      }
     };
 
     // Add role-specific fields
@@ -517,7 +633,8 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
       receivedRequests: user.receivedRequests || [],
       connections: user.connections || [],
       // ===================
-      isVerified: user.isVerified || false
+      isVerified: user.isVerified || false,
+      permissions: user.permissions
     };
 
     // Add role-specific fields to response
@@ -534,7 +651,7 @@ app.post("/api/auth/register", profileUpload.single('profilePhoto'), async (req,
     });
   } catch (error) {
     if (req.file) {
-      await cloudinary.uploader.destroy(req.file.filename);
+      await cloudinary.ploader.destroy(req.file.filename);
     }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -565,13 +682,14 @@ app.post("/api/auth/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+    
     await db.collection('users').updateOne(
-  { _id: user._id },
-  { 
-    $set: { lastLogin: new Date() },
-    $inc: { loginCount: 1 }
-  }
-);
+      { _id: user._id },
+      { 
+        $set: { lastLogin: new Date() },
+        $inc: { loginCount: 1 }
+      }
+    );
 
     const userResponse = {
       id: user._id,
@@ -597,9 +715,18 @@ app.post("/api/auth/login", async (req, res) => {
       facultyDepartment: user.facultyDepartment || '',
       designation: user.designation || '',
       status: user.status || 'active',
-  restrictedUntil: user.restrictedUntil || null,
-  restrictionReason: user.restrictionReason || '',
-  restrictionDetails: user.restrictionDetails || { isRestricted: false }
+      restrictedUntil: user.restrictedUntil || null,
+      restrictionReason: user.restrictionReason || '',
+      restrictionDetails: user.restrictionDetails || { isRestricted: false },
+      permissions: user.permissions || {
+        canPost: true,
+        canComment: true,
+        canEditProfile: true,
+        canSendRequests: true,
+        canAcceptRequests: true,
+        canLike: true,
+        canShare: true
+      }
     };
 
     res.json({
@@ -834,6 +961,8 @@ app.post("/api/posts", auth, async (req, res) => {
       userId: new ObjectId(userId),
       likes: [],
       comments: [],
+      shareCount: 0,
+      shares: [], // FIX: Ensure shares is an array
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -877,7 +1006,7 @@ app.post("/api/posts", auth, async (req, res) => {
     const result = await db.collection('posts').insertOne(post);
     
     // Get user data for response
-    // const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    const userData = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     
     const postResponse = {
       _id: result.insertedId,
@@ -886,15 +1015,17 @@ app.post("/api/posts", auth, async (req, res) => {
       media: post.media,
       likes: post.likes,
       comments: post.comments,
+      shareCount: post.shareCount,
+      shares: post.shares,
       createdAt: post.createdAt,
       event: post.event || null,
       poll: post.poll || null,
       user: {
-        id: user._id,
-        name: user.name,
-        profilePhoto: user.profilePhoto,
-        role: user.role,
-        department: user.department
+        id: userData._id,
+        name: userData.name,
+        profilePhoto: userData.profilePhoto,
+        role: userData.role,
+        department: userData.department
       }
     };
 
@@ -1006,6 +1137,8 @@ const userId = req.user.userId;
       userId: new ObjectId(userId),
       likes: [],
       comments: [],
+      shareCount: 0,
+      shares: [], // FIX: Ensure shares is an array
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -1065,6 +1198,8 @@ const userId = req.user.userId;
       media: post.media,
       likes: post.likes,
       comments: post.comments,
+      shareCount: post.shareCount,
+      shares: post.shares,
       createdAt: post.createdAt,
       event: post.event || null,
       poll: post.poll || null,
@@ -1211,6 +1346,8 @@ app.put("/api/posts/:id", auth, async (req, res) => {
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       event: updatedPost.event || null,
       poll: updatedPost.poll || null,
       createdAt: updatedPost.createdAt,
@@ -1231,7 +1368,7 @@ app.put("/api/posts/:id", auth, async (req, res) => {
   }
 });
 
-// ==================== YOUR 80-20 ALGORITHM FOR FEED ====================
+// ==================== YOUR 80-20 ALGORITHM FOR FEED - FIXED DUPLICATE KEY ISSUE ====================
 
 app.get("/api/posts", auth, async (req, res) => {
   try {
@@ -1240,31 +1377,53 @@ app.get("/api/posts", auth, async (req, res) => {
     // Get user connections
     const currentUser = await db.collection('users').findOne(
       { _id: new ObjectId(currentUserId) },
-      { projection: { connections: 1 } }
+      { projection: { connections: 1, sentRequests: 1, receivedRequests: 1 } }
     );
     
     const userConnections = currentUser?.connections || [];
+    const sentRequests = currentUser?.sentRequests || [];
+    const receivedRequests = currentUser?.receivedRequests || [];
     
-    // Get all posts
+    // Get all posts, but also include posts shared with current user
     const allPosts = await db.collection('posts').find().sort({ createdAt: -1 }).toArray();
     
     // Categorize posts
     const connectionPosts = [];
     const publicNonConnectionPosts = [];
+    const sharedWithMePosts = []; // NEW: Posts shared with me
+    const seenPostIds = new Set(); // Track seen posts to avoid duplicates
     
     for (const post of allPosts) {
       const postUser = await db.collection('users').findOne({ _id: new ObjectId(post.userId) });
       
       if (!postUser) continue;
       
+      const postId = post._id.toString();
+      
+      // Skip if we've already seen this post (prevents duplicates)
+      if (seenPostIds.has(postId)) {
+        continue;
+      }
+      
       const isOwnPost = post.userId.toString() === currentUserId;
       const isConnection = userConnections.includes(post.userId.toString());
       const isPublicUser = postUser.isPrivate === false;
       
-      if (isOwnPost) continue;
+      // Check if this post was shared with me
+      const wasSharedWithMe = Array.isArray(post.shares) && post.shares.some(share => 
+        share.sharedWith && share.sharedWith.includes(currentUserId)
+      );
+      
+      // Skip if it's my own post and wasn't shared with me
+      if (isOwnPost && !wasSharedWithMe) continue;
+      
+      // Ensure shares is an array
+      const safeShares = Array.isArray(post.shares) ? post.shares : [];
       
       const postWithUser = {
         ...post,
+        _id: post._id,
+        shares: safeShares,
         user: {
           id: postUser._id,
           name: postUser.name || "Unknown User",
@@ -1272,65 +1431,416 @@ app.get("/api/posts", auth, async (req, res) => {
           role: postUser.role,
           department: postUser.department || postUser.facultyDepartment,
           isPrivate: Boolean(postUser.isPrivate)
-        }
+        },
+        // Add flags for frontend
+        wasSharedWithMe: wasSharedWithMe,
+        sharedBy: wasSharedWithMe ? safeShares.find(share => 
+          share.sharedWith && share.sharedWith.includes(currentUserId)
+        )?.userId : null
       };
       
-      if (isConnection) {
+      // Mark this post as seen
+      seenPostIds.add(postId);
+      
+      // Categorize posts - FIXED: Only add to one category to avoid duplicates
+      if (wasSharedWithMe && !isOwnPost) {
+        // Priority 1: Posts shared with me (even if from non-connection or private user)
+        sharedWithMePosts.push(postWithUser);
+      } else if (isConnection) {
+        // Priority 2: Connection posts
         connectionPosts.push(postWithUser);
-      }
-      else if (isPublicUser) {
+      } else if (isPublicUser) {
+        // Priority 3: Public posts from non-connections
         publicNonConnectionPosts.push(postWithUser);
       }
     }
     
-    // ==================== YOUR 80-20 ALGORITHM ====================
+    // ==================== IMPROVED 80-20 ALGORITHM WITHOUT DUPLICATES ====================
     
     const availableConnections = connectionPosts.length;
     const availablePublic = publicNonConnectionPosts.length;
+    const availableShared = sharedWithMePosts.length;
     
-    // Calculate 20% of total feed
-    // If connections = 80% of feed, then total feed = connections ÷ 0.8
+    console.log("┌─────────────────────────────────────┐");
+    console.log("│           FEED STATISTICS           │");
+    console.log("├─────────────────────────────────────┤");
+    console.log(`│ Connection posts: ${availableConnections.toString().padEnd(3)} available │`);
+    console.log(`│ Public posts:     ${availablePublic.toString().padEnd(3)} available │`);
+    console.log(`│ Shared posts:     ${availableShared.toString().padEnd(3)} available │`);
+    
+    // Calculate 20% of total feed from connections
     const totalFeedIfAllConnections = Math.ceil(availableConnections / 0.8);
     const targetPublicFor20Percent = Math.ceil(totalFeedIfAllConnections * 0.2);
     
     // Take available posts
     const targetPublic = Math.min(targetPublicFor20Percent, availablePublic);
     
-    const allFriendPosts = connectionPosts;
+    // Include shared posts (these are important!)
+    const allFriendPosts = [...connectionPosts];
     const discoveryPosts = publicNonConnectionPosts.slice(0, targetPublic);
     
-    // Mix by time
-    const allPostsMixed = [...allFriendPosts, ...discoveryPosts];
+    // Mix by time - but prioritize shared posts
+    const allPostsMixed = [...allFriendPosts, ...discoveryPosts, ...sharedWithMePosts];
     
-    // Shuffle
-    for (let i = allPostsMixed.length - 1; i > 0; i--) {
+    // Remove any remaining duplicates by post ID
+    const uniquePostsMap = new Map();
+    allPostsMixed.forEach(post => {
+      const postId = post._id.toString();
+      if (!uniquePostsMap.has(postId)) {
+        uniquePostsMap.set(postId, post);
+      }
+    });
+    
+    const uniquePostsArray = Array.from(uniquePostsMap.values());
+    
+    // Shuffle to avoid monotony
+    for (let i = uniquePostsArray.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [allPostsMixed[i], allPostsMixed[j]] = [allPostsMixed[j], allPostsMixed[i]];
+      [uniquePostsArray[i], uniquePostsArray[j]] = [uniquePostsArray[j], uniquePostsArray[i]];
     }
     
-    // Sort by time
-    allPostsMixed.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Sort by time (newest first)
+    uniquePostsArray.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
-    // ==================== DETAILED CONSOLE OUTPUT ====================
-    console.log("┌─────────────────────────────────────┐");
-    console.log("│           FEED STATISTICS           │");
-    console.log("├─────────────────────────────────────┤");
-    console.log(`│ Connection posts: ${availableConnections.toString().padEnd(3)} available │`);
-    console.log(`│ Public posts:     ${availablePublic.toString().padEnd(3)} available │`);
+    // Ensure shares array exists for all posts
+    const finalPosts = uniquePostsArray.map(post => ({
+      ...post,
+      shares: Array.isArray(post.shares) ? post.shares : []
+    }));
+    
     console.log("├─────────────────────────────────────┤");
     console.log(`│ 20% of total feed: ${targetPublicFor20Percent} posts needed │`);
     console.log(`│ Public posts used: ${targetPublic} posts │`);
+    console.log(`│ Shared posts used: ${sharedWithMePosts.length} posts │`);
     console.log("├─────────────────────────────────────┤");
-    console.log(`│ FINAL FEED: ${allPostsMixed.length} total posts      │`);
+    console.log(`│ FINAL FEED: ${finalPosts.length} total posts      │`);
     console.log(`│ - Friends:  ${allFriendPosts.length} posts           │`);
     console.log(`│ - Public:   ${discoveryPosts.length} posts           │`);
+    console.log(`│ - Shared:   ${sharedWithMePosts.length} posts        │`);
     console.log("└─────────────────────────────────────┘");
     
-    res.json(allPostsMixed);
+    res.json(finalPosts);
     
     
   } catch (error) {
     console.error("Error:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== GET SPECIFIC USER'S FEED ====================
+
+// Get feed for a specific user (for profile pages)
+app.get("/api/users/:userId/feed", auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user.userId;
+    
+    // Validate userId
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    // Get the user's posts
+    const userPosts = await db.collection('posts')
+      .find({ userId: new ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    // Get user info
+    const user = await db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { name: 1, profilePhoto: 1, role: 1, department: 1 } }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Get posts that were shared with this user
+    const sharedPosts = await db.collection('posts')
+      .find({
+        shares: {
+          $elemMatch: {
+            sharedWith: { $in: [userId] }
+          }
+        }
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    // Combine and process posts - Remove duplicates
+    const uniquePosts = [];
+    const seenPostIds = new Set();
+    
+    const allPosts = [...userPosts, ...sharedPosts];
+    
+    for (const post of allPosts) {
+      const postId = post._id.toString();
+      if (!seenPostIds.has(postId)) {
+        seenPostIds.add(postId);
+        uniquePosts.push(post);
+      }
+    }
+    
+    // Get user info for each post and format response
+    const postsWithDetails = await Promise.all(
+      uniquePosts.map(async (post) => {
+        const postUser = await db.collection('users').findOne(
+          { _id: new ObjectId(post.userId) },
+          { projection: { name: 1, profilePhoto: 1, role: 1, department: 1 } }
+        );
+        
+        // Check if this post was shared with the current user
+        const wasSharedWithCurrentUser = Array.isArray(post.shares) && 
+          post.shares.some(share => share.sharedWith && share.sharedWith.includes(currentUserId));
+        
+        // Check if this post was shared with the target user (for profile page)
+        const wasSharedWithTargetUser = Array.isArray(post.shares) && 
+          post.shares.some(share => share.sharedWith && share.sharedWith.includes(userId));
+        
+        return {
+          _id: post._id,
+          content: post.content,
+          type: post.type || 'text',
+          media: post.media || [],
+          likes: post.likes || [],
+          comments: post.comments || [],
+          shareCount: post.shareCount || 0,
+          shares: Array.isArray(post.shares) ? post.shares : [],
+          event: post.event || null,
+          poll: post.poll || null,
+          createdAt: post.createdAt,
+          wasSharedWithCurrentUser,
+          wasSharedWithTargetUser,
+          sharedBy: wasSharedWithTargetUser ? post.shares?.find(share => 
+            share.sharedWith && share.sharedWith.includes(userId)
+          )?.userId : null,
+          user: {
+            id: postUser?._id,
+            name: postUser?.name || "Unknown User",
+            profilePhoto: postUser?.profilePhoto,
+            role: postUser?.role,
+            department: postUser?.department
+          }
+        };
+      })
+    );
+    
+    // Sort by date (newest first)
+    postsWithDetails.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    res.json({
+      success: true,
+      posts: postsWithDetails,
+      user: {
+        id: user._id,
+        name: user.name,
+        profilePhoto: user.profilePhoto,
+        role: user.role
+      },
+      stats: {
+        totalPosts: userPosts.length,
+        sharedPosts: sharedPosts.length,
+        totalFeed: postsWithDetails.length
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error fetching user feed:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== GET POSTS SHARED WITH ME ====================
+
+// Get posts that were shared with the current user
+app.get("/api/posts/shared-with-me", auth, async (req, res) => {
+  try {
+    const currentUserId = req.user.userId;
+    
+    // Find posts where shares.sharedWith includes currentUserId
+    const sharedPosts = await db.collection('posts')
+      .find({
+        shares: {
+          $elemMatch: {
+            sharedWith: { $in: [currentUserId] }
+          }
+        }
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    // Remove duplicates
+    const uniquePosts = [];
+    const seenPostIds = new Set();
+    
+    for (const post of sharedPosts) {
+      const postId = post._id.toString();
+      if (!seenPostIds.has(postId)) {
+        seenPostIds.add(postId);
+        uniquePosts.push(post);
+      }
+    }
+    
+    // Get user info for each post
+    const postsWithDetails = await Promise.all(
+      uniquePosts.map(async (post) => {
+        const postUser = await db.collection('users').findOne(
+          { _id: new ObjectId(post.userId) },
+          { projection: { name: 1, profilePhoto: 1, role: 1, department: 1 } }
+        );
+        
+        // Find who shared it with me
+        const shareInfo = Array.isArray(post.shares) ? 
+          post.shares.find(share => share.sharedWith && share.sharedWith.includes(currentUserId)) : null;
+        
+        let sharedByUser = null;
+        if (shareInfo?.userId) {
+          sharedByUser = await db.collection('users').findOne(
+            { _id: new ObjectId(shareInfo.userId) },
+            { projection: { name: 1, profilePhoto: 1 } }
+          );
+        }
+        
+        return {
+          _id: post._id,
+          content: post.content,
+          type: post.type || 'text',
+          media: post.media || [],
+          likes: post.likes || [],
+          comments: post.comments || [],
+          shareCount: post.shareCount || 0,
+          shares: Array.isArray(post.shares) ? post.shares : [],
+          event: post.event || null,
+          poll: post.poll || null,
+          createdAt: post.createdAt,
+          shareInfo: {
+            sharedBy: shareInfo?.userId,
+            sharedByName: sharedByUser?.name || "Unknown User",
+            sharedByPhoto: sharedByUser?.profilePhoto,
+            message: shareInfo?.message || '',
+            timestamp: shareInfo?.timestamp
+          },
+          user: {
+            id: postUser?._id,
+            name: postUser?.name || "Unknown User",
+            profilePhoto: postUser?.profilePhoto,
+            role: postUser?.role,
+            department: postUser?.department
+          }
+        };
+      })
+    );
+    
+    res.json({
+      success: true,
+      count: postsWithDetails.length,
+      posts: postsWithDetails
+    });
+    
+  } catch (error) {
+    console.error("Error fetching shared posts:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== GET SINGLE POST WITH DETAILS ====================
+
+// Get a single post with full details including shares
+app.get("/api/posts/:postId/full", auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const currentUserId = req.user.userId;
+    
+    // Validate postId
+    if (!ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+    
+    const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    
+    // Get post owner info
+    const postUser = await db.collection('users').findOne(
+      { _id: new ObjectId(post.userId) },
+      { projection: { name: 1, profilePhoto: 1, role: 1, department: 1 } }
+    );
+    
+    // Check if this post was shared with current user
+    const wasSharedWithMe = Array.isArray(post.shares) && 
+      post.shares.some(share => share.sharedWith && share.sharedWith.includes(currentUserId));
+    
+    // Get detailed share information
+    const detailedShares = [];
+    if (Array.isArray(post.shares)) {
+      for (const share of post.shares) {
+        if (share.userId) {
+          const sharer = await db.collection('users').findOne(
+            { _id: new ObjectId(share.userId) },
+            { projection: { name: 1, profilePhoto: 1 } }
+          );
+          
+          // Get info about who it was shared with
+          const sharedWithUsers = [];
+          if (Array.isArray(share.sharedWith)) {
+            for (const userId of share.sharedWith) {
+              const user = await db.collection('users').findOne(
+                { _id: new ObjectId(userId) },
+                { projection: { name: 1, profilePhoto: 1 } }
+              );
+              if (user) {
+                sharedWithUsers.push({
+                  userId: user._id,
+                  name: user.name,
+                  profilePhoto: user.profilePhoto
+                });
+              }
+            }
+          }
+          
+          detailedShares.push({
+            ...share,
+            sharerName: sharer?.name || "Unknown User",
+            sharerPhoto: sharer?.profilePhoto,
+            sharedWithUsers: sharedWithUsers
+          });
+        }
+      }
+    }
+    
+    const postResponse = {
+      _id: post._id,
+      content: post.content,
+      type: post.type || 'text',
+      media: post.media || [],
+      likes: post.likes || [],
+      comments: post.comments || [],
+      shareCount: post.shareCount || 0,
+      shares: detailedShares,
+      event: post.event || null,
+      poll: post.poll || null,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      wasSharedWithMe,
+      user: {
+        id: postUser?._id,
+        name: postUser?.name || "Unknown User",
+        profilePhoto: postUser?.profilePhoto,
+        role: postUser?.role,
+        department: postUser?.department
+      }
+    };
+    
+    res.json({
+      success: true,
+      post: postResponse
+    });
+    
+  } catch (error) {
+    console.error("Error fetching post details:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -1426,6 +1936,8 @@ app.post("/api/posts/:id/rsvp", auth, async (req, res) => {
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       event: updatedPost.event || null,
       poll: updatedPost.poll || null,
       createdAt: updatedPost.createdAt,
@@ -1547,6 +2059,8 @@ app.post("/api/posts/:id/vote", auth, async (req, res) => {
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       event: updatedPost.event || null,
       poll: updatedPost.poll || null,
       createdAt: updatedPost.createdAt,
@@ -1566,6 +2080,398 @@ app.post("/api/posts/:id/vote", auth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating vote:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== SHARE POST ROUTES - IMPROVED FOR ALL FEEDS ====================
+
+// Share post with connections - FIXED VERSION
+app.post("/api/posts/:postId/share", auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { connectionIds, message } = req.body;
+    const userId = req.user.userId;
+
+    // ============ ADD RESTRICTION CHECK ============
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    
+    if (user.status === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(user.restrictedUntil);
+      
+      if (restrictionEnd > now) {
+        return res.status(403).json({ 
+          success: false,
+          message: `⏸️ Your account is restricted until ${restrictionEnd.toLocaleString()}. You cannot share posts during restriction.`,
+          canShare: false
+        });
+      }
+    }
+    // ============ END CHECK ============
+
+    // Validate postId
+    if (!ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
+    if (!connectionIds || !Array.isArray(connectionIds) || connectionIds.length === 0) {
+      return res.status(400).json({ message: 'Please select at least one connection to share with' });
+    }
+
+    const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Get current user info
+    const currentUser = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const postOwner = await db.collection('users').findOne({ _id: new ObjectId(post.userId) });
+    
+    // Get original post content preview (first 100 chars)
+    const postPreview = post.content.length > 100 ? post.content.substring(0, 100) + '...' : post.content;
+    
+    // Send notification to each selected connection
+    const notifications = [];
+    const successfullySharedWith = [];
+    
+    for (const connectionId of connectionIds) {
+      // Validate connection exists and is actually a connection
+      const isConnected = currentUser.connections?.includes(connectionId);
+      if (!isConnected) {
+        console.log(`User ${connectionId} is not a connection, skipping notification`);
+        continue;
+      }
+
+      // Create personalized message
+      const notificationMessage = message 
+        ? `${currentUser.name} shared a post with you: "${message}"`
+        : `${currentUser.name} shared ${post.userId.toString() === userId ? 'their post' : `${postOwner?.name || 'someone'}'s post`} with you`;
+      
+      const notification = await createNotification({
+        recipientId: connectionId,
+        senderId: userId,
+        type: "post_shared",
+        postId: postId,
+        message: notificationMessage
+      });
+      
+      if (notification) {
+        notifications.push({
+          userId: connectionId,
+          success: true
+        });
+        successfullySharedWith.push(connectionId);
+      }
+    }
+
+    // FIXED: Safely handle shares field - check if it exists and is an array
+    const currentShares = Array.isArray(post.shares) ? post.shares : [];
+    
+    // Check if user already shared with any of these connections
+    const existingShareIndex = currentShares.findIndex(share => share.userId === userId);
+    
+    let updatedShares;
+    if (existingShareIndex > -1) {
+      // Update existing share entry
+      const existingShare = currentShares[existingShareIndex];
+      const combinedSharedWith = [...new Set([...existingShare.sharedWith, ...successfullySharedWith])];
+      currentShares[existingShareIndex] = {
+        ...existingShare,
+        sharedWith: combinedSharedWith,
+        timestamp: new Date(),
+        message: message || existingShare.message
+      };
+      updatedShares = currentShares;
+    } else {
+      // Create new share entry
+      updatedShares = [...currentShares, {
+        userId: userId,
+        sharedWith: successfullySharedWith,
+        timestamp: new Date(),
+        message: message || ''
+      }];
+    }
+    
+    // Increment share count on post and update shares array
+    const shareIncrement = existingShareIndex > -1 ? 0 : 1; // Only increment if it's a new share
+    
+    await db.collection('posts').updateOne(
+      { _id: new ObjectId(postId) },
+      { 
+        $inc: { shareCount: shareIncrement },
+        $set: { 
+          shares: updatedShares
+        }
+      }
+    );
+
+    // Emit real-time update to all users who might be viewing this post
+    const updatedPost = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    const postUser = await db.collection('users').findOne({ _id: new ObjectId(updatedPost.userId) });
+    
+    const postResponse = {
+      _id: updatedPost._id,
+      content: updatedPost.content,
+      type: updatedPost.type,
+      media: updatedPost.media || [],
+      likes: updatedPost.likes || [],
+      comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
+      event: updatedPost.event || null,
+      poll: updatedPost.poll || null,
+      createdAt: updatedPost.createdAt,
+      user: {
+        id: postUser?._id,
+        name: postUser?.name || "Unknown User",
+        profilePhoto: postUser?.profilePhoto,
+        role: postUser?.role,
+        department: postUser?.department
+      }
+    };
+    
+    // Emit to post owner and all users who were shared with
+    const usersToNotify = [...successfullySharedWith, post.userId.toString()];
+    usersToNotify.forEach(userIdToNotify => {
+      emitToUser(userIdToNotify, "post_updated", {
+        postId: postId,
+        post: postResponse,
+        action: "shared"
+      });
+    });
+
+    res.json({
+      success: true,
+      message: `Post shared with ${notifications.length} connection(s)`,
+      sharedWithCount: notifications.length,
+      notifications,
+      post: postResponse
+    });
+
+  } catch (error) {
+    console.error("Error sharing post:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get connections for sharing modal
+app.get("/api/posts/:postId/share/connections", auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user.userId;
+
+    // Validate postId
+    if (!ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
+    const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Get current user's connections
+    const currentUser = await db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { connections: 1 } }
+    );
+
+    const connectionIds = currentUser?.connections || [];
+    
+    // Get detailed connection info
+    const connections = await db.collection('users')
+      .find({ _id: { $in: connectionIds.map(id => new ObjectId(id)) } })
+      .project({
+        _id: 1,
+        name: 1,
+        email: 1,
+        profilePhoto: 1,
+        role: 1,
+        department: 1
+      })
+      .toArray();
+
+    // Get already shared connections
+    const alreadySharedWith = [];
+    if (Array.isArray(post.shares)) {
+      const userShare = post.shares.find(share => share.userId === userId);
+      if (userShare && Array.isArray(userShare.sharedWith)) {
+        alreadySharedWith.push(...userShare.sharedWith);
+      }
+    }
+
+    // Mark connections as already shared
+    const connectionsWithStatus = connections.map(conn => ({
+      ...conn,
+      alreadyShared: alreadySharedWith.includes(conn._id.toString())
+    }));
+
+    res.json({
+      success: true,
+      connections: connectionsWithStatus,
+      totalConnections: connections.length,
+      alreadySharedCount: alreadySharedWith.length
+    });
+
+  } catch (error) {
+    console.error("Error fetching connections for sharing:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get post share data - IMPROVED VERSION
+app.get("/api/posts/:postId/shares", auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user.userId;
+
+    if (!ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
+    const post = await db.collection('posts').findOne(
+      { _id: new ObjectId(postId) },
+      { projection: { shares: 1, shareCount: 1, userId: 1 } }
+    );
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // FIX: Ensure shares is an array
+    const shares = Array.isArray(post.shares) ? post.shares : [];
+    
+    // Get detailed information about who shared the post
+    const detailedShares = [];
+    for (const share of shares) {
+      const sharer = await db.collection('users').findOne(
+        { _id: new ObjectId(share.userId) },
+        { projection: { name: 1, profilePhoto: 1 } }
+      );
+      
+      // Get info about who it was shared with
+      const sharedWithUsers = [];
+      if (Array.isArray(share.sharedWith)) {
+        for (const sharedUserId of share.sharedWith) {
+          const user = await db.collection('users').findOne(
+            { _id: new ObjectId(sharedUserId) },
+            { projection: { name: 1, profilePhoto: 1 } }
+          );
+          if (user) {
+            sharedWithUsers.push({
+              userId: user._id,
+              name: user.name,
+              profilePhoto: user.profilePhoto
+            });
+          }
+        }
+      }
+      
+      detailedShares.push({
+        ...share,
+        sharerName: sharer?.name || "Unknown User",
+        sharerPhoto: sharer?.profilePhoto,
+        sharedWithUsers: sharedWithUsers
+      });
+    }
+
+    // Get user's connections
+    const user = await db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { connections: 1 } }
+    );
+
+    const connections = user?.connections || [];
+
+    res.json({
+      success: true,
+      shareCount: post.shareCount || 0,
+      shares: detailedShares,
+      userConnections: connections,
+      hasShared: shares.some(share => share.userId === userId)
+    });
+
+  } catch (error) {
+    console.error("Error fetching post shares:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== UNSHARE POST ROUTE ====================
+
+// Unshare a post (remove from shares)
+app.post("/api/posts/:postId/unshare", auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { connectionIds } = req.body; // Optional: specific connections to unshare from
+    const userId = req.user.userId;
+
+    if (!ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
+    const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const currentShares = Array.isArray(post.shares) ? post.shares : [];
+    const userShareIndex = currentShares.findIndex(share => share.userId === userId);
+    
+    if (userShareIndex === -1) {
+      return res.status(400).json({ message: 'You have not shared this post' });
+    }
+
+    const userShare = currentShares[userShareIndex];
+    let updatedShares = [...currentShares];
+    let removedCount = 0;
+
+    if (connectionIds && Array.isArray(connectionIds) && connectionIds.length > 0) {
+      // Remove specific connections
+      const remainingConnections = userShare.sharedWith.filter(
+        connId => !connectionIds.includes(connId)
+      );
+      
+      if (remainingConnections.length === 0) {
+        // Remove the entire share entry if no connections left
+        updatedShares.splice(userShareIndex, 1);
+        removedCount = userShare.sharedWith.length;
+      } else {
+        // Update the share entry with remaining connections
+        updatedShares[userShareIndex] = {
+          ...userShare,
+          sharedWith: remainingConnections,
+          timestamp: new Date()
+        };
+        removedCount = userShare.sharedWith.length - remainingConnections.length;
+      }
+    } else {
+      // Remove entire share entry
+      updatedShares.splice(userShareIndex, 1);
+      removedCount = userShare.sharedWith.length;
+    }
+
+    // Update the post
+    await db.collection('posts').updateOne(
+      { _id: new ObjectId(postId) },
+      { 
+        $set: { shares: updatedShares }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: `Post unshared from ${removedCount} connection(s)`,
+      removedCount
+    });
+
+  } catch (error) {
+    console.error("Error unsharing post:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -1655,6 +2561,8 @@ app.post("/api/posts/:postId/comment", auth, async (req, res) => {
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       event: updatedPost.event || null,
       poll: updatedPost.poll || null,
       createdAt: updatedPost.createdAt,
@@ -1727,6 +2635,8 @@ app.put("/api/posts/:postId/comments/:commentId", auth, async (req, res) => {
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       createdAt: updatedPost.createdAt,
       user: {
         id: postUser?._id,
@@ -1796,6 +2706,8 @@ app.delete("/api/posts/:postId/comments/:commentId", auth, async (req, res) => {
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       event: updatedPost.event || null,
       poll: updatedPost.poll || null,
       createdAt: updatedPost.createdAt,
@@ -1870,6 +2782,8 @@ app.post("/api/posts/:postId/comments/:commentId/like", auth, async (req, res) =
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       createdAt: updatedPost.createdAt,
       user: {
         id: postUser?._id,
@@ -1991,6 +2905,8 @@ app.post("/api/posts/:postId/like", auth, async (req, res) => {
       media: updatedPost.media || [],
       likes: updatedPost.likes || [],
       comments: updatedPost.comments || [],
+      shareCount: updatedPost.shareCount || 0,
+      shares: updatedPost.shares || [],
       event: updatedPost.event || null,
       poll: updatedPost.poll || null,
       createdAt: updatedPost.createdAt,
@@ -2128,6 +3044,11 @@ app.get("/api/posts/search", auth, async (req, res) => {
     const postsWithUsers = await Promise.all(
       posts.map(async (post) => {
         const user = await db.collection('users').findOne({ _id: new ObjectId(post.userId) });
+        
+        // Check if this post was shared with the current user
+        const wasSharedWithMe = Array.isArray(post.shares) && 
+          post.shares.some(share => share.sharedWith && share.sharedWith.includes(userId));
+        
         return {
           _id: post._id,
           content: post.content,
@@ -2135,9 +3056,12 @@ app.get("/api/posts/search", auth, async (req, res) => {
           media: post.media || [],
           likes: post.likes || [],
           comments: post.comments || [],
+          shareCount: post.shareCount || 0,
+          shares: Array.isArray(post.shares) ? post.shares : [],
           event: post.event || null,
           poll: post.poll || null,
           createdAt: post.createdAt,
+          wasSharedWithMe,
           user: {
             id: user?._id,
             name: user?.name || "Unknown User",
@@ -2235,6 +3159,7 @@ app.get("/api/users/:userId/posts", auth, async (req, res) => {
 
     const postsWithUser = posts.map(post => ({
       ...post,
+      shares: Array.isArray(post.shares) ? post.shares : [],
       user: {
         id: user?._id,
         name: user?.name || "Unknown User",
@@ -2269,13 +3194,19 @@ app.get("/api/users/:userId/activity", auth, async (req, res) => {
     
     posts.forEach(post => {
       // Check if user liked this post
-      const hasLiked = post.likes && post.likes.includes(userId);
+      const hasLiked = post.likes && post.likes.some(like => 
+        typeof like === 'string' ? like === userId : like.userId === userId
+      );
       
       // Check if user commented on this post
       const userComments = post.comments ? 
         post.comments.filter(comment => comment.userId === userId) : [];
       
-      if (hasLiked || userComments.length > 0) {
+      // Check if user shared this post
+      const userShares = Array.isArray(post.shares) ? 
+        post.shares.filter(share => share.userId === userId) : [];
+      
+      if (hasLiked || userComments.length > 0 || userShares.length > 0) {
         // Get post owner info for activity
         const postOwnerId = post.userId.toString();
         
@@ -2302,6 +3233,20 @@ app.get("/api/users/:userId/activity", auth, async (req, res) => {
             postOwnerId: postOwnerId,
             postOwnerName: 'User', // We'll populate later
             timestamp: comment.timestamp
+          });
+        });
+        
+        // Add share activities
+        userShares.forEach(share => {
+          userActivity.push({
+            type: 'share',
+            postId: post._id,
+            postContent: post.content.substring(0, 100) + (post.content.length > 100 ? '...' : ''),
+            postType: post.type || 'text',
+            postOwnerId: postOwnerId,
+            postOwnerName: 'User', // We'll populate later
+            sharedWithCount: Array.isArray(share.sharedWith) ? share.sharedWith.length : 0,
+            timestamp: share.timestamp
           });
         });
       }
@@ -3467,6 +4412,8 @@ app.get("/api/admin/posts", auth, requireAdmin, async (req, res) => {
           media: post.media || [],
           likesCount: post.likes?.length || 0,
           commentsCount: post.comments?.length || 0,
+          shareCount: post.shareCount || 0,
+          shares: post.shares || [],
           event: post.event || null,
           poll: post.poll || null,
           createdAt: post.createdAt,
@@ -3628,8 +4575,6 @@ app.get("/api/admin/reports", auth, requireAdmin, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
-
-
 
 // ==================== USER WARNINGS SYSTEM ====================
 
@@ -3876,7 +4821,6 @@ app.post("/api/admin/reports/:postId/resolve", auth, requireAdmin, async (req, r
   }
 });
 
-
 // Get resolved reports (Admin only)
 app.get("/api/admin/reports/resolved", auth, requireAdmin, async (req, res) => {
   try {
@@ -3941,6 +4885,7 @@ app.get("/api/admin/reports/resolved", auth, requireAdmin, async (req, res) => {
     });
   }
 });
+
 // ==================== NEW ADMIN ENDPOINTS ====================
 
 // Update user role (Admin only)
@@ -4919,7 +5864,7 @@ app.get("/", (req, res) => {
     message: "Swish Backend API is running 🚀",
     version: "2.0",
     campus: "SIGCE Campus",
-    features: "Complete Event & Poll System, Cloudinary Media Upload, Real-time Notifications, Admin Dashboard, Post Deletion, Connection History Tracking"
+    features: "Complete Event & Poll System, Cloudinary Media Upload, Real-time Notifications, Admin Dashboard, Post Deletion, Connection History Tracking, Post Sharing System - FIXED FOR ALL FEEDS"
   });
 });
 
@@ -4934,6 +5879,21 @@ app.get("/api/test", async (req, res) => {
     const eventPosts = await db.collection('posts').countDocuments({ type: 'event' });
     const pollPosts = await db.collection('posts').countDocuments({ type: 'poll' });
     
+    // Check shares field status
+    const postsWithInvalidShares = await db.collection('posts').find({
+      $or: [
+        { shares: { $type: "number" } },
+        { shares: { $type: "string" } },
+        { shares: { $exists: false } },
+        { shares: null }
+      ]
+    }).toArray();
+    
+    // Check posts shared with users
+    const postsWithShares = await db.collection('posts').countDocuments({
+      shares: { $exists: true, $ne: [] }
+    });
+    
     res.json({ 
       message: 'API is working!', 
       users: users.length,
@@ -4944,14 +5904,21 @@ app.get("/api/test", async (req, res) => {
         event: eventPosts,
         poll: pollPosts
       },
+      sharesFieldStatus: {
+        postsWithInvalidShares: postsWithInvalidShares.length,
+        postsWithValidShares: postsWithShares,
+        migrationNeeded: postsWithInvalidShares.length > 0
+      },
       campus: 'SIGCE Campus',
       media: 'Cloudinary uploads active',
-      tracking: 'Connection history tracking enabled'
+      tracking: 'Connection history tracking enabled',
+      sharing: 'Post sharing system enabled - WORKING FOR ALL FEEDS'
     });
   } catch (error) {
     res.status(500).json({ message: 'Database error', error: error.message });
   }
 });
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("❌ Global Error:", err);
@@ -4962,4 +5929,4 @@ app.use((err, req, res, next) => {
 });
 
 // Start server (use server, not app)
-server.listen(PORT, () => console.log(`🚀 Server running on port: ${PORT} with Complete Connection History Tracking`));
+server.listen(PORT, () => console.log(`🚀 Server running on port: ${PORT} with Post Sharing System Working for ALL FEEDS`));

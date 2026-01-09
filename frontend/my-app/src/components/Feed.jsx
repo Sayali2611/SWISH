@@ -8,7 +8,6 @@ import ExploreSearch from "../components/ExploreSearch";
 import "../styles/ExploreSearch.css";
 import PostModal from './PostModal';
 
-
 // ==================== IMAGE CAROUSEL COMPONENT ====================
 const ImageCarousel = ({ images, videos }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -19,7 +18,6 @@ const ImageCarousel = ({ images, videos }) => {
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  
   
   const videoRefs = useRef([]);
   const carouselRef = useRef(null);
@@ -290,7 +288,7 @@ const ImageCarousel = ({ images, videos }) => {
     };
   }, [currentIndex, media, clearProgressInterval]);
 
-  // Handle keyboard navigation - FIXED: Check if user is typing in input/textarea
+  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Check if user is typing in an input, textarea, or contenteditable
@@ -507,9 +505,8 @@ const ImageCarousel = ({ images, videos }) => {
   );
 };
 
-
-
 function Feed() {
+  // Existing states
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
@@ -557,6 +554,16 @@ function Feed() {
   
   const [rsvpLoading, setRsvpLoading] = useState({});
   const [voteLoading, setVoteLoading] = useState({});
+
+  // NEW STATES FOR SHARE FUNCTIONALITY - UPDATED WITH FIXES
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [postToShare, setPostToShare] = useState(null);
+  const [connections, setConnections] = useState([]);
+  const [selectedConnections, setSelectedConnections] = useState([]);
+  const [searchConnections, setSearchConnections] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCounts, setShareCounts] = useState({});
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -566,80 +573,75 @@ function Feed() {
   const highlightTimeoutRef = useRef(null);
   const lastHighlightTimeRef = useRef(0);
 
-  // Add this function in your Feed component
-const fetchUserWithRestriction = useCallback(async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:5000/api/auth/profile', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    
-    if (response.ok) {
-      const freshUser = await response.json();
-      console.log("🔄 Fresh user data with restriction:", {
-        status: freshUser.status,
-        restrictedUntil: freshUser.restrictedUntil,
-        restrictionReason: freshUser.restrictionReason
+  // Fetch user with restriction status
+  const fetchUserWithRestriction = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/auth/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      setUser(freshUser);
-      localStorage.setItem('user', JSON.stringify(freshUser));
+      if (response.ok) {
+        const freshUser = await response.json();
+        console.log("🔄 Fresh user data with restriction:", {
+          status: freshUser.status,
+          restrictedUntil: freshUser.restrictedUntil,
+          restrictionReason: freshUser.restrictionReason
+        });
+        
+        setUser(freshUser);
+        localStorage.setItem('user', JSON.stringify(freshUser));
+      }
+    } catch (error) {
+      console.error("Error fetching fresh user data:", error);
     }
-  } catch (error) {
-    console.error("Error fetching fresh user data:", error);
-  }
-}, []);
+  }, []);
 
-const handleRestrictedAction = () => {
-  console.log("🔍 Checking restriction for user:", user?.name);
-  console.log("🔍 User status:", user?.status);
-  console.log("🔍 Restricted until:", user?.restrictedUntil);
-  
-  if (!user) {
-    console.log("🔍 No user found");
-    return true;
-  }
-  
-  // Check if fields exist, if not fetch fresh data
-  if (user.status === undefined || user.restrictedUntil === undefined) {
-    console.log("🔍 Restriction fields missing, fetching fresh data");
-    fetchUserWithRestriction();
-    return true; // Block action while fetching
-  }
-  
-  const userStatus = user.status || 'active'; // Default to 'active' if undefined
-const restrictedUntil = user.restrictedUntil || null;
-
-if (userStatus === 'restricted' && restrictedUntil) {
-    const now = new Date();
-    const restrictionEnd = new Date(user.restrictedUntil);
-  
-    console.log("🔍 Now:", now);
-    console.log("🔍 Restriction end:", restrictionEnd);
-    console.log("🔍 Is restricted?", restrictionEnd > now);
+  // UPDATED: Simplified restriction check - only blocks if there's clear evidence of restriction
+  const handleRestrictedAction = () => {
+    console.log("🔍 Checking restriction for user:", user?.name);
     
-    if (restrictionEnd > now) {
-      const formattedDate = restrictionEnd.toLocaleString();
-      const message = `⏸️ Your account is restricted until ${formattedDate}. You cannot post, comment, like, or connect during this time.`;
-      
-      console.log("🔍 Showing restriction message:", message);
-      setError(message);
-      return true;
-    } else {
-      console.log("🔍 Restriction expired, auto-removing");
-      setUser(prev => ({
-        ...prev,
-        status: 'active',
-        restrictedUntil: null
-      }));
+    if (!user) {
+      console.log("🔍 No user found");
+      return false; // Changed to false to allow action
     }
-  } else {
-    console.log("🔍 User is not restricted");
-  }
-  
-  return false;
-};
+    
+    // Check if user is explicitly restricted
+    const userStatus = user.status || 'active';
+    const restrictedUntil = user.restrictedUntil || null;
 
+    // Only block if user is explicitly marked as restricted AND has a valid restriction date
+    if (userStatus === 'restricted' && restrictedUntil) {
+      const now = new Date();
+      const restrictionEnd = new Date(restrictedUntil);
+    
+      console.log("🔍 Now:", now);
+      console.log("🔍 Restriction end:", restrictionEnd);
+      console.log("🔍 Is restricted?", restrictionEnd > now);
+      
+      if (restrictionEnd > now) {
+        const formattedDate = restrictionEnd.toLocaleString();
+        const message = `⏸️ Your account is restricted until ${formattedDate}. You cannot post, comment, like, or connect during this time.`;
+        
+        console.log("🔍 Showing restriction message:", message);
+        setError(message);
+        return true; // Block action
+      } else {
+        console.log("🔍 Restriction expired, auto-removing");
+        // Restriction expired, update user status
+        setUser(prev => ({
+          ...prev,
+          status: 'active',
+          restrictedUntil: null
+        }));
+        return false; // Allow action
+      }
+    } else {
+      console.log("🔍 User is not restricted - status:", userStatus, "restrictedUntil:", restrictedUntil);
+      // If status is undefined or null, treat as active
+      return false; // Allow action
+    }
+  };
 
   // Cleanup preview URLs
   useEffect(() => {
@@ -939,6 +941,178 @@ if (userStatus === 'restricted' && restrictedUntil) {
     }
   }, []);
   
+  // ==================== SHARE FUNCTIONS - UPDATED ====================
+
+  // Open share modal for a post
+  const openShareModal = async (post) => {
+    // UPDATED: Don't check restriction for sharing - allow all users to share
+    console.log("📤 Opening share modal for post:", post._id);
+    
+    setPostToShare(post);
+    setSelectedConnections([]);
+    setSearchConnections("");
+    setShareMessage("");
+    setShareLoading(true);
+    setError("");
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Fetch user's connections
+      const response = await fetch('http://localhost:5000/api/network/connections', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("🔗 Connections fetched:", data);
+        const connectionsList = data.connections || data || [];
+        console.log("🔗 Connections list:", connectionsList);
+        setConnections(connectionsList);
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to fetch connections:", errorData);
+        setError("Failed to load connections: " + (errorData.message || "Unknown error"));
+      }
+      
+      // Fetch post share count
+      try {
+        const shareResponse = await fetch(`http://localhost:5000/api/posts/${post._id}/shares`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (shareResponse.ok) {
+          const shareData = await shareResponse.json();
+          setShareCounts(prev => ({
+            ...prev,
+            [post._id]: shareData.shareCount || 0
+          }));
+        }
+      } catch (shareError) {
+        console.warn("Could not fetch share count:", shareError);
+      }
+      
+      setShowShareModal(true);
+      console.log("✅ Share modal opened");
+    } catch (error) {
+      console.error("Error opening share modal:", error);
+      setError("Failed to load connections: " + error.message);
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  // Close share modal
+  const closeShareModal = () => {
+    console.log("📤 Closing share modal");
+    setShowShareModal(false);
+    setPostToShare(null);
+    setSelectedConnections([]);
+    setSearchConnections("");
+    setShareMessage("");
+  };
+
+  // Toggle connection selection
+  const toggleConnectionSelect = (connectionId) => {
+    setSelectedConnections(prev => {
+      if (prev.includes(connectionId)) {
+        return prev.filter(id => id !== connectionId);
+      } else {
+        return [...prev, connectionId];
+      }
+    });
+  };
+
+  // Select all connections
+  const selectAllConnections = () => {
+    if (selectedConnections.length === connections.length) {
+      setSelectedConnections([]);
+    } else {
+      const allConnectionIds = connections.map(conn => conn._id || conn.id);
+      setSelectedConnections(allConnectionIds);
+    }
+  };
+
+  // Handle share post
+  const handleSharePost = async () => {
+    if (!postToShare || selectedConnections.length === 0) {
+      setError("Please select at least one connection to share with");
+      return;
+    }
+
+    setShareLoading(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Log the data being sent
+      console.log("📤 Sharing post data:", {
+        postId: postToShare._id,
+        connectionIds: selectedConnections,
+        message: shareMessage
+      });
+      
+      const response = await fetch(`http://localhost:5000/api/posts/${postToShare._id}/share`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          connectionIds: selectedConnections,
+          message: shareMessage
+        })
+      });
+
+      const data = await response.json();
+      console.log("📥 Share response:", data);
+      
+      if (response.ok) {
+        setSuccess(`✅ Post shared with ${selectedConnections.length} connection(s)!`);
+        
+        // Update share count in local state
+        setShareCounts(prev => ({
+          ...prev,
+          [postToShare._id]: (prev[postToShare._id] || 0) + selectedConnections.length
+        }));
+
+        // Refresh posts to update share count
+        fetchPosts();
+        
+        closeShareModal();
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        setError(data.message || 'Failed to share post. Please try again.');
+      }
+    } catch (error) {
+      console.error("❌ Share error:", error);
+      setError('Network error: Unable to share post. Please check your connection.');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  // Filter connections based on search
+  const filteredConnections = connections.filter(conn => {
+    const searchLower = searchConnections.toLowerCase();
+    const connName = conn.name || '';
+    const connDepartment = conn.department || '';
+    const connRole = conn.role || '';
+    const connEmail = conn.email || '';
+    
+    return (
+      connName.toLowerCase().includes(searchLower) ||
+      connDepartment.toLowerCase().includes(searchLower) ||
+      connRole.toLowerCase().includes(searchLower) ||
+      connEmail.toLowerCase().includes(searchLower)
+    );
+  });
+
   // Main initialization effect
   useEffect(() => {
     console.log("🔍 [Feed] Component mounted or refreshTrigger changed", { refreshTrigger });
@@ -953,8 +1127,11 @@ if (userStatus === 'restricted' && restrictedUntil) {
 
     const userObj = JSON.parse(userData);
     setUser(userObj);
-     // ADD THIS: Fetch fresh user data with restriction status
-  fetchUserWithRestriction();
+    
+    // Only fetch user restriction data if needed
+    if (userObj.status === 'restricted') {
+      fetchUserWithRestriction();
+    }
 
     isProcessingRef.current = false;
     fetchPosts();
@@ -993,7 +1170,7 @@ if (userStatus === 'restricted' && restrictedUntil) {
         socket.off("new_notification");
       }
     };
-  }, [navigate, refreshTrigger, fetchPosts, fetchAllUsers]);
+  }, [navigate, refreshTrigger, fetchPosts, fetchAllUsers, fetchUserWithRestriction]);
 
   // Check URL for highlight parameters
   useEffect(() => {
@@ -1118,7 +1295,10 @@ if (userStatus === 'restricted' && restrictedUntil) {
 
   // ==================== POST CREATION ====================
   const handleCreatePost = async () => {
-    if (handleRestrictedAction()) return;
+    // UPDATED: Only check restriction if user has explicit restriction data
+    if (user?.status === 'restricted') {
+      if (handleRestrictedAction()) return;
+    }
 
     console.log("🚀 [Feed] Post button clicked!");
     console.log("📝 Post content:", newPost);
@@ -1286,7 +1466,10 @@ if (userStatus === 'restricted' && restrictedUntil) {
 
   // ==================== POST INTERACTIONS ====================
   const handleEventRSVP = async (postId, status) => {
-    if (handleRestrictedAction()) return;
+    // UPDATED: Only check restriction if user has explicit restriction data
+    if (user?.status === 'restricted') {
+      if (handleRestrictedAction()) return;
+    }
     if (!user) return;
 
     setRsvpLoading(prev => ({ ...prev, [postId]: true }));
@@ -1323,7 +1506,10 @@ if (userStatus === 'restricted' && restrictedUntil) {
   };
 
   const handlePollVote = async (postId, optionIndex) => {
-    if (handleRestrictedAction()) return;
+    // UPDATED: Only check restriction if user has explicit restriction data
+    if (user?.status === 'restricted') {
+      if (handleRestrictedAction()) return;
+    }
     if (!user) return;
 
     setVoteLoading(prev => ({ ...prev, [postId]: true }));
@@ -1360,83 +1546,86 @@ if (userStatus === 'restricted' && restrictedUntil) {
   };
 
   const handleLike = async (postId) => {
-  if (handleRestrictedAction()) return; // Restriction check
-
-  if (!user) return;
-
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (response.ok) {
-      const updatedPost = await response.json();
-      setPosts(prevPosts => 
-        prevPosts.map(post => 
-          post._id === postId ? updatedPost : post
-        )
-      );
-      // Update selectedPost if modal is open
-      if (selectedPost && selectedPost._id === postId) {
-        setSelectedPost(updatedPost);
-      }
+    // UPDATED: Only check restriction if user has explicit restriction data
+    if (user?.status === 'restricted') {
+      if (handleRestrictedAction()) return;
     }
-    // REMOVE error handling - don't show "Failed to like post"
-  } catch (error) {
-    // Silent catch - don't show any error message
-  }
-};
+    if (!user) return;
 
-const handleAddComment = async (postId, commentText) => {
-  if (handleRestrictedAction()) return; // Restriction check
-  if (!commentText?.trim() || !user) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-  setCommentLoading(prev => ({ ...prev, [postId]: true }));
-  
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        content: commentText
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      setCommentTexts(prev => ({ ...prev, [postId]: "" }));
-      setPosts(prevPosts => 
-        prevPosts.map(post => 
-          post._id === postId ? data.post : post
-        )
-      );
-      
-      // Update selectedPost if modal is open
-      if (selectedPost && selectedPost._id === postId) {
-        setSelectedPost(data.post);
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post._id === postId ? updatedPost : post
+          )
+        );
+        // Update selectedPost if modal is open
+        if (selectedPost && selectedPost._id === postId) {
+          setSelectedPost(updatedPost);
+        }
       }
-      
-      setSuccess('Comment added successfully!');
-      setTimeout(() => setSuccess(""), 2000);
-      return data.post; // Return updated post
+    } catch (error) {
+      // Silent catch
     }
-    // REMOVE error handling - don't show "Failed to add comment"
-  } catch (error) {
-    // Silent catch - don't show any error message
-    return null;
-  } finally {
-    setCommentLoading(prev => ({ ...prev, [postId]: false }));
-  }
-};
+  };
+
+  const handleAddComment = async (postId, commentText) => {
+    // UPDATED: Only check restriction if user has explicit restriction data
+    if (user?.status === 'restricted') {
+      if (handleRestrictedAction()) return;
+    }
+    if (!commentText?.trim() || !user) return;
+
+    setCommentLoading(prev => ({ ...prev, [postId]: true }));
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: commentText
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCommentTexts(prev => ({ ...prev, [postId]: "" }));
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post._id === postId ? data.post : post
+          )
+        );
+        
+        // Update selectedPost if modal is open
+        if (selectedPost && selectedPost._id === postId) {
+          setSelectedPost(data.post);
+        }
+        
+        setSuccess('Comment added successfully!');
+        setTimeout(() => setSuccess(""), 2000);
+        return data.post;
+      }
+    } catch (error) {
+      // Silent catch
+      return null;
+    } finally {
+      setCommentLoading(prev => ({ ...prev, [postId]: false }));
+    }
+  };
 
   // Open post modal with comments and likes
   const openPostModal = (post) => {
@@ -1486,82 +1675,82 @@ const handleAddComment = async (postId, commentText) => {
   };
 
   const handleDeleteComment = async (postId, commentId) => {
-  if (!window.confirm('Delete this comment?')) return;
+    if (!window.confirm('Delete this comment?')) return;
 
-  try {
-    const token = localStorage.getItem('token');
-    
-    console.log("Deleting comment:", { postId, commentId });
-    
-    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    try {
+      const token = localStorage.getItem('token');
+      
+      console.log("Deleting comment:", { postId, commentId });
+      
+      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log("Comment deleted successfully:", data);
-      
-      setPosts(prevPosts => 
-        prevPosts.map(post => 
-          post._id === postId ? data.post : post
-        )
-      );
-      
-      if (selectedPost && selectedPost._id === postId) {
-        setSelectedPost(data.post);
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Comment deleted successfully:", data);
+        
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post._id === postId ? data.post : post
+          )
+        );
+        
+        if (selectedPost && selectedPost._id === postId) {
+          setSelectedPost(data.post);
+        }
+        
+        setSuccess('Comment deleted!');
+        setTimeout(() => setSuccess(""), 2000);
+        return data.post;
+      } else {
+        const errorData = await response.json();
+        console.error("Delete comment failed:", errorData);
+        setError(errorData.message || 'Failed to delete comment');
+        return null;
       }
-      
-      setSuccess('Comment deleted!');
-      setTimeout(() => setSuccess(""), 2000);
-      return data.post;
-    } else {
-      const errorData = await response.json();
-      console.error("Delete comment failed:", errorData);
-      setError(errorData.message || 'Failed to delete comment');
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      setError('Failed to delete comment');
       return null;
     }
-  } catch (error) {
-    console.error("Error deleting comment:", error);
-    setError('Failed to delete comment');
-    return null;
-  }
-};
- // In Feed.jsx, update the handleLikeComment function:
-const handleLikeComment = async (postId, commentId) => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}/like`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+  };
 
-    if (response.ok) {
-      const data = await response.json();
-      setPosts(prevPosts => 
-        prevPosts.map(post => 
-          post._id === postId ? data.post : post
-        )
-      );
-      
-      if (selectedPost && selectedPost._id === postId) {
-        setSelectedPost(data.post);
+  const handleLikeComment = async (postId, commentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post._id === postId ? data.post : post
+          )
+        );
+        
+        if (selectedPost && selectedPost._id === postId) {
+          setSelectedPost(data.post);
+        }
+        return data.post;
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to like comment');
+        return null;
       }
-      return data.post;
-    } else {
-      const errorData = await response.json();
-      setError(errorData.message || 'Failed to like comment');
+    } catch (error) {
+      setError('Failed to like comment');
       return null;
     }
-  } catch (error) {
-    setError('Failed to like comment');
-    return null;
-  }
-};
+  };
 
   // ==================== POST DELETE FUNCTION ====================
   const handleDeletePost = async (postId) => {
@@ -2470,6 +2659,9 @@ const handleLikeComment = async (postId, commentId) => {
                       <span className="stat-item">
                         💬 {post.comments?.length || 0}
                       </span>
+                      <span className="stat-item">
+                        🔄 {shareCounts[post._id] || 0}
+                      </span>
                       {post.type === 'event' && post.event && (
                         <span className="stat-item">
                           👥 {post.event.rsvpCount || 0}
@@ -2500,7 +2692,10 @@ const handleLikeComment = async (postId, commentId) => {
                       >
                         💬 Comment
                       </button>
-                      <button className="action-btn share-btn">
+                      <button 
+                        className="action-btn share-btn"
+                        onClick={() => openShareModal(post)}
+                      >
                         🔄 Share
                       </button>
                       <button 
@@ -2691,6 +2886,159 @@ const handleLikeComment = async (postId, commentId) => {
           </div>
         </div>
       )}
+
+      {/* Share Modal - UPDATED WITH PROPER VISIBILITY AND CSS CLASSES */}
+        {showShareModal && postToShare && (
+          <div className="share-popup-overlay" onClick={closeShareModal}>
+            <div className="share-popup" onClick={(e) => e.stopPropagation()}>
+              <div className="share-popup-header">
+                <h3>Share Post</h3>
+                <button 
+                  className="close-share-btn" 
+                  onClick={closeShareModal}
+                  aria-label="Close share modal"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="share-content">
+                <div className="share-post-preview">
+                  <div className="share-post-header">
+                    <div className="share-post-user">
+                      <div className="share-post-avatar">
+                        {getUserAvatar(postToShare.user)}
+                      </div>
+                      <div>
+                        <div className="share-post-username">
+                          {postToShare.user?.name || "Unknown User"}
+                        </div>
+                        <div className="share-post-time">
+                          {new Date(postToShare.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="share-post-text">
+                      {postToShare.content.length > 150 
+                        ? postToShare.content.substring(0, 150) + '...'
+                        : postToShare.content}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="share-message-section">
+                  <label>Add a message (optional):</label>
+                  <textarea
+                    placeholder="Say something about this post..."
+                    value={shareMessage}
+                    onChange={(e) => setShareMessage(e.target.value)}
+                    maxLength={200}
+                    rows={3}
+                  />
+                  <div className="char-count-share">
+                    {shareMessage.length}/200
+                  </div>
+                </div>
+                
+                <div className="share-connections-section">
+                  <div className="share-section-header">
+                    <h4>Share with Connections</h4>
+                    <div className="connections-search">
+                      <input
+                        type="text"
+                        placeholder="Search connections by name, department, or email..."
+                        value={searchConnections}
+                        onChange={(e) => setSearchConnections(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="select-all-connections">
+                    <label className="select-all-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedConnections.length === connections.length && connections.length > 0}
+                        onChange={selectAllConnections}
+                      />
+                      <span>Select All</span>
+                    </label>
+                    <span className="selected-count">
+                      {selectedConnections.length} selected
+                    </span>
+                  </div>
+                  
+                  <div className="connections-list">
+                    {shareLoading ? (
+                      <div className="loading-connections">
+                        Loading connections...
+                      </div>
+                    ) : filteredConnections.length > 0 ? (
+                      filteredConnections.map(conn => (
+                        <div 
+                          key={conn._id || conn.id} 
+                          className={`connection-item ${selectedConnections.includes(conn._id || conn.id) ? 'selected' : ''}`}
+                        >
+                          <label className="connection-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={selectedConnections.includes(conn._id || conn.id)}
+                              onChange={() => toggleConnectionSelect(conn._id || conn.id)}
+                            />
+                            <div className="connection-avatar">
+                              {conn.profilePhoto ? (
+                                <img 
+                                  src={conn.profilePhoto} 
+                                  alt={conn.name} 
+                                />
+                              ) : (
+                                <div className="avatar-placeholder">
+                                  {conn.name?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="connection-details">
+                              <div className="connection-name">
+                                {conn.name || 'Unknown User'}
+                              </div>
+                              <div className="connection-meta">
+                                {conn.department && <span>{conn.department}</span>}
+                                {conn.role && <span>{conn.role}</span>}
+                                {conn.email && <span className="connection-email">{conn.email}</span>}
+                              </div>
+                            </div>
+                          </label>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="no-connections">
+                        {searchConnections ? 'No connections match your search' : 'No connections found'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="share-popup-footer">
+                <button 
+                  className="cancel-share-btn" 
+                  onClick={closeShareModal}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="share-post-btn"
+                  onClick={handleSharePost}
+                  disabled={selectedConnections.length === 0 || shareLoading}
+                >
+                  {shareLoading ? 'Sharing...' : `Share with ${selectedConnections.length} connection(s)`}
+                </button>
+              </div>
+            </div>
+          </div>    
+        )}
 
       {/* Post Modal */}
       {postModalOpen && selectedPost && (
