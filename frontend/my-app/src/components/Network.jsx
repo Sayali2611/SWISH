@@ -14,7 +14,6 @@ function Network() {
   const [user, setUser] = useState(null);
   const [notifCount, setNotifCount] = useState(0);
   const [activeTab, setActiveTab] = useState("people");
-  const [darkMode, setDarkMode] = useState(false);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [quickActionFilter, setQuickActionFilter] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,49 +77,6 @@ function Network() {
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            
-            {data.map((item, index) => {
-              const x = (index / (data.length - 1)) * 100;
-              const y = ((maxValue - item.value) / maxValue) * 100;
-              return (
-                <g key={index}>
-                  <circle
-                    cx={`${x}%`}
-                    cy={`${y}%`}
-                    r="4"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="2"
-                    className="data-point"
-                    onMouseEnter={(e) => {
-                      const tooltip = e.target.parentNode.querySelector('.data-tooltip');
-                      if (tooltip) tooltip.style.display = 'block';
-                    }}
-                    onMouseLeave={(e) => {
-                      const tooltip = e.target.parentNode.querySelector('.data-tooltip');
-                      if (tooltip) tooltip.style.display = 'none';
-                    }}
-                  />
-                  <foreignObject
-                    x={`${x}%`}
-                    y={`${y}%`}
-                    width="120"
-                    height="60"
-                    className="data-tooltip-container"
-                  >
-                    <div className="data-tooltip" style={{ display: 'none' }}>
-                      <div className="tooltip-date">{item.label}</div>
-                      <div className="tooltip-value">Total: {item.value}</div>
-                      {item.rawCount !== 0 && (
-                        <div className={`tooltip-change ${item.rawCount > 0 ? 'positive' : 'negative'}`}>
-                          {item.rawCount > 0 ? `+${item.rawCount}` : item.rawCount} connections
-                        </div>
-                      )}
-                    </div>
-                  </foreignObject>
-                </g>
-              );
-            })}
           </svg>
           
           <div className="x-axis-labels">
@@ -396,12 +352,6 @@ function Network() {
     fetchUserProfile();
     fetchAllData();
     fetchNotificationCount();
-    
-    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setDarkMode(darkModeMediaQuery.matches);
-    const handleChange = (e) => setDarkMode(e.matches);
-    darkModeMediaQuery.addEventListener('change', handleChange);
-    return () => darkModeMediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   useEffect(() => {
@@ -487,23 +437,6 @@ function Network() {
       setFilteredUsers(availableUsers);
     }
   }, [users, connections, outgoing, incoming, quickActionFilter, user, networkInsights]);
-
-  useEffect(() => {
-  // Check for tab parameter in URL
-  const params = new URLSearchParams(location.search);
-  const tabParam = params.get('tab');
-  
-  if (tabParam && ['people', 'received', 'sent', 'connections'].includes(tabParam)) {
-    console.log("📥 [Network] Setting active tab from URL:", tabParam);
-    setActiveTab(tabParam);
-    
-    // If it's 'received', also clear the filter
-    if (tabParam === 'received') {
-      setQuickActionFilter(null);
-      setSearchQuery("");
-    }
-  }
-}, [location.search]);
 
   // 🔵 API CALL FUNCTIONS
   const fetchUserProfile = async () => {
@@ -693,7 +626,7 @@ function Network() {
   };
   
   return (
-    <div className={`network-page ${darkMode ? 'dark-mode' : ''}`}>
+    <div className="network-page">
       
       {/* 🔵 HEADER - UPDATED TO MATCH FEED PAGE NAVBAR */}
       <header className="feed-header network-feed-header">
@@ -711,12 +644,11 @@ function Network() {
             <button className="nav-btn active" onClick={() => navigate("/network")}>👥 Network</button>
             <button className="nav-btn" onClick={() => navigate("/Explore")}>🌍 Explore</button>
             <button 
-              className={`nav-btn notification-bell-btn`}
+              className="nav-btn notification-bell-btn"
               onClick={handleClickNotification}
               title="Notifications"
             >
               🔔 Notifications
-              {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
             </button>
           </div>
         </div>
@@ -737,7 +669,7 @@ function Network() {
               className="admin-btn"
               onClick={() => navigate("/admin")}
               style={{
-                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                background: 'linear-gradient(135deg, #6f4bac, #9793e4)',
                 color: 'white',
                 border: 'none',
                 padding: '8px 16px',
@@ -770,7 +702,7 @@ function Network() {
               <div className="modal-title-section">
                 <h3>📊 Network Growth Analytics</h3>
                 <div className="data-source-indicator">
-                  <span className={`data-source real`}>
+                  <span className="data-source real">
                     📈 Real-Time Historical Tracking
                   </span>
                 </div>
@@ -833,7 +765,7 @@ function Network() {
                     <LineChart 
                       data={networkInsights.networkGrowth.historicalData}
                       maxValue={networkInsights.networkGrowth.maxHistoricalValue}
-                      color="linear-gradient(to right, #3498db, #2ecc71)"
+                      color="#3498db"
                       height={280}
                     />
                   </div>
@@ -1050,76 +982,12 @@ function Network() {
         </div>
       )}
       
-      {/* 🔵 ALUMNI NETWORK MODAL */}
-      {showAlumniNetworkModal && (
-        <div className="modal-overlay" onClick={() => setShowAlumniNetworkModal(false)}>
-          <div className="modal-content analytics-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>👥 Alumni Network Analysis</h3>
-              <button className="modal-close" onClick={() => setShowAlumniNetworkModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="analytics-summary">
-                <div className="summary-stats">
-                  <div className="stat-item">
-                    <div className="stat-value">{networkInsights.alumniNetwork.count}</div>
-                    <div className="stat-label">Alumni in Network</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-value">{networkInsights.alumniNetwork.percentage}%</div>
-                    <div className="stat-label">of Network</div>
-                  </div>
-                </div>
-                
-                <div className="alumni-visual">
-                  <div className="alumni-percentage-circle">
-                    <svg width="100" height="100" viewBox="0 0 36 36">
-                      <path
-                        d="M18 2.0845
-                          a 15.9155 15.9155 0 0 1 0 31.831
-                          a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="#e2e8f0"
-                        strokeWidth="3"
-                      />
-                      <path
-                        d="M18 2.0845
-                          a 15.9155 15.9155 0 0 1 0 31.831
-                          a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="#10b981"
-                        strokeWidth="3"
-                        strokeDasharray={`${networkInsights.alumniNetwork.percentage}, 100`}
-                      />
-                    </svg>
-                    <div className="percentage-text">{networkInsights.alumniNetwork.percentage}%</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="modal-btn" onClick={() => {
-                setShowAlumniNetworkModal(false);
-                setQuickActionFilter('alumni');
-                setSearchQuery("Alumni");
-                setActiveTab("people");
-              }}>
-                <span className="modal-icon">🔗</span>
-                Connect with Alumni
-              </button>
-              <button className="modal-btn cancel" onClick={() => setShowAlumniNetworkModal(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {/* 🔵 MAIN CONTENT */}
       <main className="network-main">
         <div className="network-hero">
           <div className="hero-content">
-            <h1>Your Network</h1>
+            <h1>My Network</h1>
             <p>Connect with professionals and grow your circle</p>
             {networkInsights.networkGrowth.hasRealData && (
               <div className="historical-data-badge">
@@ -1158,14 +1026,44 @@ function Network() {
           </div>
         )}
 
-        <div className="tab-navigation">
-          {[["👥", "People", "people", filteredUsers.length], ["📥", "Received", "received", incoming.length], ["📤", "Sent", "sent", outgoing.length], ["🤝", "Connections", "connections", connections.length]].map(([icon, label, tab, count]) => (
-            <button key={tab} className={`tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => {setActiveTab(tab); clearFilter();}}>
-              <span className="tab-icon">{icon}</span>
-              <span className="tab-label">{label}</span>
-              {count > 0 && <span className="tab-badge">{count}</span>}
-            </button>
-          ))}
+        {/* UPDATED TAB NAVIGATION */}
+        <div className="network-tabs">
+          {/* PEOPLE (NO BADGE) */}
+          <div 
+            className={`tab-item ${activeTab === 'people' ? 'active' : ''}`} 
+            onClick={() => { setActiveTab('people'); clearFilter(); }}
+          >
+            <span className="tab-icon">👥</span>
+            <span className="tab-text">People</span>
+          </div>
+
+          {/* RECEIVED (BADGE KEPT) */}
+          <div 
+            className={`tab-item ${activeTab === 'received' ? 'active' : ''}`} 
+            onClick={() => { setActiveTab('received'); clearFilter(); }}
+          >
+            <span className="tab-icon">📥</span>
+            <span className="tab-text">Received</span>
+            {incoming.length > 0 && <span className="notification-badge">{incoming.length}</span>}
+          </div>
+
+          {/* SENT (NO BADGE) */}
+          <div 
+            className={`tab-item ${activeTab === 'sent' ? 'active' : ''}`} 
+            onClick={() => { setActiveTab('sent'); clearFilter(); }}
+          >
+            <span className="tab-icon">📤</span>
+            <span className="tab-text">Sent</span>
+          </div>
+
+          {/* CONNECTIONS (NO BADGE) */}
+          <div 
+            className={`tab-item ${activeTab === 'connections' ? 'active' : ''}`} 
+            onClick={() => { setActiveTab('connections'); clearFilter(); }}
+          >
+            <span className="tab-icon">🤝</span>
+            <span className="tab-text">Connections</span>
+          </div>
         </div>
 
         <div className="tab-content-wrapper">
@@ -1378,12 +1276,6 @@ function Network() {
                         </div>
                         <div className="connection-actions">
                           <button 
-                            className="message-btn"
-                            onClick={() => navigate(`/messages?user=${connection._id}`)}
-                          >
-                            <span className="message-icon">💬</span> Message
-                          </button>
-                          <button 
                             className="remove-btn" 
                             onClick={() => {
                               if (window.confirm(`Remove ${connection.name} from your connections?`)) {
@@ -1411,7 +1303,6 @@ function Network() {
               ["📈", "Network Growth", `${networkInsights.networkGrowth.total} connections`, () => setShowNetworkGrowthModal(true)],
               ["🎯", "Common Fields", networkInsights.commonFields.topDepartment, () => setShowCommonFieldsModal(true)],
               ["🔧", "Top Shared Skills", networkInsights.topSkills.topSkill, () => setShowTopSkillsModal(true)],
-              ["👥", "Alumni Network", `${networkInsights.alumniNetwork.count} alumni`, () => setShowAlumniNetworkModal(true)],
             ].map(([icon, title, value, onClick], idx) => (
               <div key={idx} className="insight-item clickable" onClick={onClick}>
                 <span className="insight-icon">{icon}</span>
