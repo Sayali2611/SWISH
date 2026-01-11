@@ -3,7 +3,7 @@ import { debounce } from 'lodash';
 import { IoSearchOutline, IoCloseOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 
-const SEARCH_HISTORY_KEY = 'campusConnectSearchHistory';
+const SEARCH_HISTORY_KEY = 'SwishSearchHistory';
 const MAX_HISTORY = 10;
 
 // Helper function to get initials for avatar

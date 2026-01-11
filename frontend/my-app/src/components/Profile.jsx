@@ -760,7 +760,7 @@ const handleSaveEdit = async () => {
       <div className="feed-container">
         <header className="feed-header">
           <div className="header-left">
-            <div className="logo" onClick={() => navigate("/feed")}>💼 CampusConnect</div>
+            <div className="logo" onClick={() => navigate("/feed")}>💼 Swish</div>
             <div className="feed-search-wrapper">
               <ExploreSearch onUserSelect={handleUserSelectFromSearch} />
             </div>
@@ -1585,7 +1585,7 @@ const handleSaveEdit = async () => {
       {/* Header */}
       <header className="feed-header">
         <div className="header-left">
-          <div className="logo" onClick={() => navigate("/feed")}>💼 CampusConnect</div>
+          <div className="logo" onClick={() => navigate("/feed")}>💼 Swish</div>
           <div className="feed-search-wrapper">
             <ExploreSearch onUserSelect={handleUserSelectFromSearch} />
           </div>

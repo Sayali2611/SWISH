@@ -30,7 +30,7 @@ global.db = null;
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://campusconnect-sigce.vercel.app'],
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://Swish-sigce.vercel.app'],
   credentials: true
 }));
 
@@ -1370,9 +1370,62 @@ app.put("/api/posts/:id", auth, async (req, res) => {
 
 // ==================== YOUR 80-20 ALGORITHM FOR FEED - FIXED DUPLICATE KEY ISSUE ====================
 
+// ==================== FEED WITH NOTIFICATION HIGHLIGHT ====================
+
 app.get("/api/posts", auth, async (req, res) => {
   try {
     const currentUserId = req.user.userId;
+    
+    // ============ CHECK FOR ALL TYPES OF HIGHLIGHTS ============
+    let pinnedPost = null;
+    
+    // Get highlight from query parameter
+    const highlightParam = req.query.highlight;
+    
+    if (highlightParam) {
+      try {
+        const highlightData = JSON.parse(highlightParam);
+        
+        // Check if highlight is still valid (15 seconds)
+        const now = Date.now();
+        if (highlightData.postId && highlightData.timestamp && 
+            (now - highlightData.timestamp < 15000)) {
+          
+          // Get the pinned post from database
+          pinnedPost = await db.collection('posts').findOne({ 
+            _id: new ObjectId(highlightData.postId) 
+          });
+          
+          if (pinnedPost) {
+            console.log(`🎯 [Backend] Pinning ${highlightData.type || 'unknown'} post to top:`, highlightData.postId);
+            console.log(`🎯 [Backend] Source:`, highlightData.source || 'unknown');
+            
+            // Get user info
+            const pinnedPostUser = await db.collection('users').findOne({ 
+              _id: new ObjectId(pinnedPost.userId) 
+            });
+            
+            // Add user info
+            pinnedPost.user = {
+              id: pinnedPostUser._id,
+              name: pinnedPostUser.name || "Unknown User",
+              profilePhoto: pinnedPostUser.profilePhoto,
+              role: pinnedPostUser.role,
+              department: pinnedPostUser.department || pinnedPostUser.facultyDepartment,
+              isPrivate: Boolean(pinnedPostUser.isPrivate)
+            };
+            
+            // Mark as pinned
+            pinnedPost.isPinned = true;
+            pinnedPost.pinnedSource = highlightData.type || 'unknown';
+            pinnedPost.pinnedFrom = highlightData.source || 'unknown';
+            pinnedPost.pinnedUntil = new Date(now + 15000);
+          }
+        }
+      } catch (error) {
+        console.error("Error processing highlight:", error);
+      }
+    }
     
     // Get user connections
     const currentUser = await db.collection('users').findOne(
@@ -1384,14 +1437,15 @@ app.get("/api/posts", auth, async (req, res) => {
     const sentRequests = currentUser?.sentRequests || [];
     const receivedRequests = currentUser?.receivedRequests || [];
     
-    // Get all posts, but also include posts shared with current user
+    // Get all posts
     const allPosts = await db.collection('posts').find().sort({ createdAt: -1 }).toArray();
     
     // Categorize posts
     const connectionPosts = [];
     const publicNonConnectionPosts = [];
-    const sharedWithMePosts = []; // NEW: Posts shared with me
-    const seenPostIds = new Set(); // Track seen posts to avoid duplicates
+    const sharedWithMePosts = [];
+    const myOwnPosts = [];
+    const seenPostIds = new Set();
     
     for (const post of allPosts) {
       const postUser = await db.collection('users').findOne({ _id: new ObjectId(post.userId) });
@@ -1400,7 +1454,7 @@ app.get("/api/posts", auth, async (req, res) => {
       
       const postId = post._id.toString();
       
-      // Skip if we've already seen this post (prevents duplicates)
+      // Skip if already seen
       if (seenPostIds.has(postId)) {
         continue;
       }
@@ -1414,10 +1468,6 @@ app.get("/api/posts", auth, async (req, res) => {
         share.sharedWith && share.sharedWith.includes(currentUserId)
       );
       
-      // Skip if it's my own post and wasn't shared with me
-      if (isOwnPost && !wasSharedWithMe) continue;
-      
-      // Ensure shares is an array
       const safeShares = Array.isArray(post.shares) ? post.shares : [];
       
       const postWithUser = {
@@ -1432,41 +1482,32 @@ app.get("/api/posts", auth, async (req, res) => {
           department: postUser.department || postUser.facultyDepartment,
           isPrivate: Boolean(postUser.isPrivate)
         },
-        // Add flags for frontend
         wasSharedWithMe: wasSharedWithMe,
         sharedBy: wasSharedWithMe ? safeShares.find(share => 
           share.sharedWith && share.sharedWith.includes(currentUserId)
         )?.userId : null
       };
       
-      // Mark this post as seen
       seenPostIds.add(postId);
       
-      // Categorize posts - FIXED: Only add to one category to avoid duplicates
-      if (wasSharedWithMe && !isOwnPost) {
-        // Priority 1: Posts shared with me (even if from non-connection or private user)
+      // Categorize posts
+      if (isOwnPost) {
+        myOwnPosts.push(postWithUser);
+      }
+      else if (wasSharedWithMe) {
         sharedWithMePosts.push(postWithUser);
       } else if (isConnection) {
-        // Priority 2: Connection posts
         connectionPosts.push(postWithUser);
       } else if (isPublicUser) {
-        // Priority 3: Public posts from non-connections
         publicNonConnectionPosts.push(postWithUser);
       }
     }
     
-    // ==================== IMPROVED 80-20 ALGORITHM WITHOUT DUPLICATES ====================
+    // ==================== 80-20 ALGORITHM ====================
     
     const availableConnections = connectionPosts.length;
     const availablePublic = publicNonConnectionPosts.length;
     const availableShared = sharedWithMePosts.length;
-    
-    console.log("┌─────────────────────────────────────┐");
-    console.log("│           FEED STATISTICS           │");
-    console.log("├─────────────────────────────────────┤");
-    console.log(`│ Connection posts: ${availableConnections.toString().padEnd(3)} available │`);
-    console.log(`│ Public posts:     ${availablePublic.toString().padEnd(3)} available │`);
-    console.log(`│ Shared posts:     ${availableShared.toString().padEnd(3)} available │`);
     
     // Calculate 20% of total feed from connections
     const totalFeedIfAllConnections = Math.ceil(availableConnections / 0.8);
@@ -1475,12 +1516,38 @@ app.get("/api/posts", auth, async (req, res) => {
     // Take available posts
     const targetPublic = Math.min(targetPublicFor20Percent, availablePublic);
     
-    // Include shared posts (these are important!)
-    const allFriendPosts = [...connectionPosts];
-    const discoveryPosts = publicNonConnectionPosts.slice(0, targetPublic);
+    // ============ 2. MIX POSTS WITH PINNED POST AT TOP ============
+    const allPostsMixed = [];
     
-    // Mix by time - but prioritize shared posts
-    const allPostsMixed = [...allFriendPosts, ...discoveryPosts, ...sharedWithMePosts];
+    // Add pinned post at the VERY TOP if it exists
+    if (pinnedPost) {
+      console.log("✅ [Backend] Adding pinned post to TOP");
+      allPostsMixed.push(pinnedPost);
+      
+      // Remove pinned post from other categories to avoid duplicates
+      const pinnedPostId = pinnedPost._id.toString();
+      
+      // Function to remove from array
+      const removeFromArray = (arr) => {
+        const index = arr.findIndex(p => p._id.toString() === pinnedPostId);
+        if (index > -1) {
+          arr.splice(index, 1);
+        }
+      };
+      
+      removeFromArray(myOwnPosts);
+      removeFromArray(connectionPosts);
+      removeFromArray(publicNonConnectionPosts);
+      removeFromArray(sharedWithMePosts);
+    }
+    
+    // Add all other posts
+    allPostsMixed.push(
+      ...myOwnPosts,
+      ...connectionPosts,
+      ...publicNonConnectionPosts.slice(0, targetPublic),
+      ...sharedWithMePosts
+    );
     
     // Remove any remaining duplicates by post ID
     const uniquePostsMap = new Map();
@@ -1514,13 +1581,18 @@ app.get("/api/posts", auth, async (req, res) => {
     console.log(`│ Shared posts used: ${sharedWithMePosts.length} posts │`);
     console.log("├─────────────────────────────────────┤");
     console.log(`│ FINAL FEED: ${finalPosts.length} total posts      │`);
-    console.log(`│ - Friends:  ${allFriendPosts.length} posts           │`);
-    console.log(`│ - Public:   ${discoveryPosts.length} posts           │`);
+    if (pinnedPost) {
+      console.log(`│ - Pinned:   1 post (from ${pinnedPost.pinnedSource || 'unknown'}) │`);
+    } else {
+      console.log(`│ - Pinned:   0 posts                           │`);
+    }
+    console.log(`│ - My Posts: ${myOwnPosts.length} posts           │`);
+    console.log(`│ - Friends:  ${connectionPosts.length} posts           │`);
+    console.log(`│ - Public:   ${targetPublic} posts           │`);
     console.log(`│ - Shared:   ${sharedWithMePosts.length} posts        │`);
     console.log("└─────────────────────────────────────┘");
     
     res.json(finalPosts);
-    
     
   } catch (error) {
     console.error("Error:", error);

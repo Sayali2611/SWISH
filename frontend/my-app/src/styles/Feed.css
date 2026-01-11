@@ -3423,3 +3423,46 @@
   background-color: #f0f8ff;
   border-left: 3px solid #007bff;
 }
+/* Notification highlight effect */
+.notification-highlighted {
+  border: 3px solid #007bff !important;
+  background-color: #f0f8ff !important;
+  box-shadow: 0 0 20px rgba(0, 123, 255, 0.3) !important;
+  transition: all 0.3s ease !important;
+  animation: pulse-highlight 2s ease-in-out;
+}
+
+@keyframes pulse-highlight {
+  0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+}
+
+/* Remove highlight when not in viewport */
+.post-card:not(.notification-highlighted) {
+  border: 1px solid #e0e0e0;
+  background-color: white;
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+/* Notification highlight effect */
+.post-card.notification-highlighted {
+  border: 3px solid #007bff !important;
+  background-color: #f0f8ff !important;
+  box-shadow: 0 0 20px rgba(0, 123, 255, 0.3) !important;
+  transition: all 0.3s ease !important;
+  animation: pulse-highlight 2s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+  0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+}
+
+/* Remove default highlights when not notification */
+.post-card:not(.notification-highlighted).highlighted-post {
+  border: 3px solid #28a745 !important;
+  background-color: #f0fff4 !important;
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.2) !important;
+}

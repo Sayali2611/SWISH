@@ -163,51 +163,64 @@ export default function NotificationsPage() {
     }
   };
 
-  // HANDLE NOTIFICATION CLICK
-  const handleNotificationClick = async (notification) => {
-    // Mark as read first
-    if (!notification.read) {
-      await markAsRead(notification.id);
-    }
+const handleNotificationClick = async (notification) => {
+  // Mark as read first
+  if (!notification.read) {
+    await markAsRead(notification.id);
+  }
 
-    // If notification has a postId, navigate to feed and highlight the post
-    if (notification.postId) {
-      console.log("🎯 [Notifications] Navigating to post:", notification.postId);
-      
-      // Store highlighted post data in localStorage (similar to search)
-      const highlightData = {
-        postId: notification.postId,
-        timestamp: Date.now(),
-        from: 'notification',
-        notificationId: notification.id,
-        postContent: notification.message || "Notification post",
-        userName: notification.userName || "User"
-      };
-      
-      localStorage.setItem('searchHighlightedPost', JSON.stringify(highlightData));
-      sessionStorage.setItem('highlightedPostId', notification.postId);
-      
-      // Trigger feed highlight via custom event
-      window.dispatchEvent(new Event('feedHighlight'));
-      window.dispatchEvent(new Event('refreshFeed'));
-      
-      // Small delay to ensure storage is updated
-      setTimeout(() => {
-        // Navigate to feed with highlight parameter
-        navigate(`/feed?highlight=${notification.postId}`);
-        
-        // Also dispatch a global event for Feed.jsx to catch
-        window.dispatchEvent(new CustomEvent('feedHighlight', {
-          detail: { postId: notification.postId, from: 'notification' }
-        }));
-      }, 100);
-    }
+  console.log("🎯 [Notifications] Clicked notification:", {
+    type: notification.type,
+    postId: notification.postId,
+    message: notification.message
+  });
+
+  // ============ CHECK IF IT'S A CONNECTION REQUEST ============
+  if (notification.type === 'connection_request' || 
+      notification.message?.toLowerCase().includes('connection request') ||
+      notification.message?.toLowerCase().includes('sent you a connection')) {
     
-    // If notification has a link field, navigate to that link
-    else if (notification.link) {
-      navigate(notification.link);
-    }
-  };
+    console.log("👥 [Notifications] Connection request - Navigating to Network/Received");
+    
+    // Navigate to Network with 'received' tab active
+    navigate('/network?tab=received');
+    return;
+  }
+
+  // If notification has a postId, navigate to feed and highlight the post
+  if (notification.postId) {
+    console.log("🎯 [Notifications] Navigating to post:", notification.postId);
+    
+    // Store highlighted post data in localStorage with expiration
+    const highlightData = {
+      postId: notification.postId,
+      timestamp: Date.now(),
+      from: 'notification',
+      notificationId: notification.id,
+      expiresAt: Date.now() + 15000, // 15 seconds expiration
+      postContent: notification.message || "Notification post",
+      userName: notification.userName || "User"
+    };
+    
+    // Use a DIFFERENT key to avoid conflict with search highlights
+    localStorage.setItem('notificationHighlight', JSON.stringify(highlightData));
+    
+    // Navigate to feed
+    navigate('/feed');
+    
+    // Dispatch event for Feed.jsx to catch
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('notificationHighlight', {
+        detail: { postId: notification.postId, from: 'notification' }
+      }));
+    }, 100);
+  }
+  
+  // If notification has a link field, navigate to that link
+  else if (notification.link) {
+    navigate(notification.link);
+  }
+};
 
   // Handle logout
   const handleLogout = () => {
@@ -366,7 +379,7 @@ function Header({ user, notifCount, handleClickNotification, handleLogout, handl
   return (
     <header className="feed-header">
       <div className="header-left">
-        <div className="logo" onClick={() => navigate("/feed")}>💼 CampusConnect</div>
+        <div className="logo" onClick={() => navigate("/feed")}>💼 Swish</div>
         
         {/* SEARCH BAR */}
         <div className="feed-search-wrapper">

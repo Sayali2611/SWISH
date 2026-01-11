@@ -488,6 +488,23 @@ function Network() {
     }
   }, [users, connections, outgoing, incoming, quickActionFilter, user, networkInsights]);
 
+  useEffect(() => {
+  // Check for tab parameter in URL
+  const params = new URLSearchParams(location.search);
+  const tabParam = params.get('tab');
+  
+  if (tabParam && ['people', 'received', 'sent', 'connections'].includes(tabParam)) {
+    console.log("📥 [Network] Setting active tab from URL:", tabParam);
+    setActiveTab(tabParam);
+    
+    // If it's 'received', also clear the filter
+    if (tabParam === 'received') {
+      setQuickActionFilter(null);
+      setSearchQuery("");
+    }
+  }
+}, [location.search]);
+
   // 🔵 API CALL FUNCTIONS
   const fetchUserProfile = async () => {
     try {
@@ -681,7 +698,7 @@ function Network() {
       {/* 🔵 HEADER - UPDATED TO MATCH FEED PAGE NAVBAR */}
       <header className="feed-header network-feed-header">
         <div className="header-left">
-          <div className="logo" onClick={() => navigate("/feed")}>💼 CampusConnect</div>
+          <div className="logo" onClick={() => navigate("/feed")}>💼 Swish</div>
           
           {/* SEARCH BAR */}
           <div className="feed-search-wrapper">

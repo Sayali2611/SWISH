@@ -572,6 +572,9 @@ function Feed() {
   const fileInputRef = useRef(null);
   const highlightTimeoutRef = useRef(null);
   const lastHighlightTimeRef = useRef(0);
+  const notificationHighlightRef = useRef(null);
+  const notificationTimeoutRef = useRef(null);
+  const scrollObserverRef = useRef(null);
 
   // Fetch user with restriction status
   const fetchUserWithRestriction = useCallback(async () => {
@@ -667,260 +670,279 @@ function Feed() {
     };
   }, []);
 
-  // Listen for custom events from ExploreSearch
-  useEffect(() => {
-    console.log("🎯 [Feed] Setting up event listeners");
-    
-    const handleFeedHighlight = () => {
-      const now = Date.now();
-      if (now - lastHighlightTimeRef.current < 1000) {
-        console.log("⏸️ [Feed] Too soon since last highlight, skipping");
-        return;
-      }
-      
-      if (isProcessingRef.current) {
-        console.log("⏸️ [Feed] Already processing, skipping duplicate event");
-        return;
-      }
-      
-      console.log("🚀 [Feed] Received feedHighlight event");
-      lastHighlightTimeRef.current = now;
-      hasCheckedHighlightRef.current = false;
-      isProcessingRef.current = false;
-      
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current);
-      }
-      
-      highlightTimeoutRef.current = setTimeout(() => {
-        fetchPosts(true);
-      }, 100);
-    };
-
-    const handleStorageChange = (e) => {
-      if (e.key === 'searchHighlightedPost' && e.newValue) {
-        const now = Date.now();
-        if (now - lastHighlightTimeRef.current > 1000) {
-          console.log("📡 [Feed] Storage event detected!");
-          handleFeedHighlight();
-        }
-      }
-    };
-
-    window.addEventListener('feedHighlight', handleFeedHighlight);
-    window.addEventListener('storage', handleStorageChange);
-
-    window.triggerFeedHighlight = () => {
-      console.log("🎯 [Feed] Global triggerFeedHighlight() called");
-      handleFeedHighlight();
-    };
-
-    window.refreshFeedPosts = () => {
-      console.log("🔄 [Feed] Global refreshFeedPosts() called");
-      setRefreshTrigger(prev => prev + 1);
-    };
-
-    return () => {
-      window.removeEventListener('feedHighlight', handleFeedHighlight);
-      window.removeEventListener('storage', handleStorageChange);
-      
-      delete window.triggerFeedHighlight;
-      delete window.refreshFeedPosts;
-      
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Combined scroll and highlight function
-  const scrollAndHighlightPost = useCallback((postId) => {
-    if (!postId || isProcessingRef.current) {
-      console.log("⏭️ [Feed] No post ID or already processing");
+// Listen for custom events from ExploreSearch
+useEffect(() => {
+  console.log("🎯 [Feed] Setting up event listeners");
+  
+  const handleFeedHighlight = () => {
+    const now = Date.now();
+    if (now - lastHighlightTimeRef.current < 1000) {
+      console.log("⏸️ [Feed] Too soon since last highlight, skipping");
       return;
     }
     
-    console.log("🎯 [Feed] Attempting to scroll and highlight post:", postId);
+    if (isProcessingRef.current) {
+      console.log("⏸️ [Feed] Already processing, skipping duplicate event");
+      return;
+    }
     
-    isProcessingRef.current = true;
-    const elementId = `post-${postId}`;
+    console.log("🚀 [Feed] Received feedHighlight event");
+    lastHighlightTimeRef.current = now;
+    hasCheckedHighlightRef.current = false;
+    isProcessingRef.current = false;
     
     if (highlightTimeoutRef.current) {
       clearTimeout(highlightTimeoutRef.current);
     }
     
     highlightTimeoutRef.current = setTimeout(() => {
-      const element = document.getElementById(elementId);
-      console.log("🔍 [Feed] Element found?", !!element);
-      
-      if (element) {
-        console.log("✅ [Feed] Found element! Scrolling and highlighting...");
-        
-        element.style.border = '3px solid #007bff';
-        element.style.backgroundColor = '#f0f8ff';
-        element.style.boxShadow = '0 0 20px rgba(0, 123, 255, 0.3)';
-        element.style.transition = 'all 0.3s ease';
-        
-        element.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center'
-        });
-        
-        setTimeout(() => {
-          element.style.boxShadow = '0 0 10px rgba(0, 123, 255, 0.1)';
-          setTimeout(() => {
-            element.style.border = '';
-            element.style.backgroundColor = '';
-            element.style.boxShadow = '';
-            setIsProcessingHighlight(false);
-            isProcessingRef.current = false;
-            hasCheckedHighlightRef.current = true;
-            console.log("✅ [Feed] Highlight complete and cleanup done");
-          }, 2000);
-        }, 4000);
-        
-        return;
-      }
-      
-      console.log("⏳ [Feed] Element not found, retrying...");
-      highlightTimeoutRef.current = setTimeout(() => {
-        const retryElement = document.getElementById(elementId);
-        if (retryElement) {
-          console.log("✅ [Feed] Found element on retry!");
-          
-          retryElement.style.border = '3px solid #007bff';
-          retryElement.style.backgroundColor = '#f0f8ff';
-          retryElement.style.boxShadow = '0 0 20px rgba(0, 123, 255, 0.3)';
-          retryElement.style.transition = 'all 0.3s ease';
-          
-          retryElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center'
-          });
-          
-          setTimeout(() => {
-            retryElement.style.boxShadow = '0 0 10px rgba(0, 123, 255, 0.1)';
-            setTimeout(() => {
-              retryElement.style.border = '';
-              retryElement.style.backgroundColor = '';
-              retryElement.style.boxShadow = '';
-              setIsProcessingHighlight(false);
-              isProcessingRef.current = false;
-              hasCheckedHighlightRef.current = true;
-              console.log("✅ [Feed] Highlight complete on retry");
-            }, 2000);
-          }, 4000);
-        } else {
-          console.log("❌ [Feed] Element not found after retry");
-          setIsProcessingHighlight(false);
-          isProcessingRef.current = false;
-        }
-      }, 500);
-    }, 300);
-  }, [setIsProcessingHighlight]);
+      fetchPosts(true);
+    }, 100);
+  };
 
-  // Fetch posts with highlighted post handling
-  const fetchPosts = useCallback(async (forceHighlight = false) => {
-    if (isProcessingRef.current && !forceHighlight) {
-      console.log("⏸️ [Feed] Already processing, skipping fetch");
+const handleNotificationHighlight = (event) => {
+  const postId = event.detail?.postId;
+  if (!postId) return;
+  
+  console.log("🔔 [Feed] Received notification highlight for post:", postId);
+  
+  // Store in localStorage for the fetchPosts function
+  const highlightData = {
+    postId: postId,
+    timestamp: Date.now(),
+    from: 'notification'
+  };
+  localStorage.setItem('notificationHighlight', JSON.stringify(highlightData));
+  
+  // Clear any existing timeout
+  if (notificationTimeoutRef.current) {
+    clearTimeout(notificationTimeoutRef.current);
+  }
+  
+  // Fetch posts (this will send the highlight to backend)
+  fetchPosts(true);
+  
+  // Clean up after 15 seconds
+  notificationTimeoutRef.current = setTimeout(() => {
+    localStorage.removeItem('notificationHighlight');
+    notificationTimeoutRef.current = null;
+  }, 15000);
+};
+
+  const handleStorageChange = (e) => {
+    if (e.key === 'searchHighlightedPost' && e.newValue) {
+      const now = Date.now();
+      if (now - lastHighlightTimeRef.current > 1000) {
+        console.log("📡 [Feed] Storage event detected!");
+        handleFeedHighlight();
+      }
+    }
+  };
+
+  window.addEventListener('feedHighlight', handleFeedHighlight);
+  window.addEventListener('notificationHighlight', handleNotificationHighlight); // ADD THIS LINE
+  window.addEventListener('storage', handleStorageChange);
+
+  window.triggerFeedHighlight = () => {
+    console.log("🎯 [Feed] Global triggerFeedHighlight() called");
+    handleFeedHighlight();
+  };
+
+  window.refreshFeedPosts = () => {
+    console.log("🔄 [Feed] Global refreshFeedPosts() called");
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  return () => {
+    window.removeEventListener('feedHighlight', handleFeedHighlight);
+    window.removeEventListener('notificationHighlight', handleNotificationHighlight); // ADD THIS LINE
+    window.removeEventListener('storage', handleStorageChange);
+    
+    delete window.triggerFeedHighlight;
+    delete window.refreshFeedPosts;
+    
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    
+    // Clean up notification timeout too
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+  };
+}, []);
+
+// Find the scrollAndHighlightPost function and UPDATE it:
+
+const scrollAndHighlightPost = useCallback((postId, fromNotification = false) => {
+  if (!postId || isProcessingRef.current) {
+    console.log("⏭️ [Feed] No post ID or already processing");
+    return;
+  }
+  
+  console.log("🎯 [Feed] Attempting to scroll and highlight post:", postId);
+  
+  isProcessingRef.current = true;
+  const elementId = `post-${postId}`;
+  
+  if (highlightTimeoutRef.current) {
+    clearTimeout(highlightTimeoutRef.current);
+  }
+  
+  highlightTimeoutRef.current = setTimeout(() => {
+    const element = document.getElementById(elementId);
+    console.log("🔍 [Feed] Element found?", !!element);
+    
+    if (element) {
+      console.log("✅ [Feed] Found element! Scrolling and highlighting...");
+      
+      // Use the new highlight function
+      highlightElement(element, fromNotification);
+      
+      // Keep your existing cleanup logic
+      isProcessingRef.current = false;
+      hasCheckedHighlightRef.current = true;
+      console.log("✅ [Feed] Highlight complete");
+      
       return;
     }
     
-    try {
-      isProcessingRef.current = true;
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/posts', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate("/");
-        return;
-      }
-
-      const data = await response.json();
-      console.log("📝 [Feed] Fetched", data.length, "posts");
-      
-      const highlightData = localStorage.getItem('searchHighlightedPost');
-      let postIdToHighlight = null;
-      let highlightDataObj = null;
-      
-      if (highlightData && !hasCheckedHighlightRef.current) {
-        try {
-          highlightDataObj = JSON.parse(highlightData);
-          console.log("✅ [Feed] Found highlighted post data:", {
-            postId: highlightDataObj.postId,
-            from: highlightDataObj.from || 'unknown',
-            timestamp: new Date(highlightDataObj.timestamp).toLocaleTimeString()
-          });
-          
-          if (highlightDataObj.postId && Date.now() - highlightDataObj.timestamp < 15000) {
-            postIdToHighlight = highlightDataObj.postId;
-            console.log("🎯 [Feed] Post is recent, will highlight it");
-          } else {
-            console.log("⏰ [Feed] Highlighted post data too old or already processed");
-            localStorage.removeItem('searchHighlightedPost');
-          }
-        } catch (error) {
-          console.error("❌ [Feed] Error parsing highlighted post:", error);
-          localStorage.removeItem('searchHighlightedPost');
-        }
-      }
-      
-      if (postIdToHighlight) {
-        setIsProcessingHighlight(true);
+    console.log("⏳ [Feed] Element not found, retrying...");
+    highlightTimeoutRef.current = setTimeout(() => {
+      const retryElement = document.getElementById(elementId);
+      if (retryElement) {
+        console.log("✅ [Feed] Found element on retry!");
+        
+        // Use the new highlight function
+        highlightElement(retryElement, fromNotification);
+        
+        isProcessingRef.current = false;
         hasCheckedHighlightRef.current = true;
-        console.log("🎯 [Feed] Looking for post with ID:", postIdToHighlight);
-        
-        const highlightedIndex = data.findIndex(post => post._id === postIdToHighlight);
-        
-        if (highlightedIndex > -1) {
-          console.log("✅ [Feed] Found highlighted post at index:", highlightedIndex);
-          
-          const newPosts = [...data];
-          const [highlightedPost] = newPosts.splice(highlightedIndex, 1);
-          newPosts.unshift(highlightedPost);
-          
-          console.log("📊 [Feed] New order - First post ID:", newPosts[0]?._id);
-          console.log("📊 [Feed] Target ID:", postIdToHighlight);
-          console.log("📊 [Feed] Match?", newPosts[0]?._id === postIdToHighlight ? "✅ YES" : "❌ NO");
-          
-          setHighlightedPostId(postIdToHighlight);
-          setSearchPostData(highlightDataObj);
-          setPosts(newPosts);
-          
-          localStorage.removeItem('searchHighlightedPost');
-          sessionStorage.removeItem('highlightedPostId');
-          console.log("🗑️ [Feed] Cleared highlighted post from storage");
-          
-          setTimeout(() => {
-            scrollAndHighlightPost(postIdToHighlight);
-          }, 200);
-          
-        } else {
-          console.log("❌ [Feed] Highlighted post not found in fetched data");
-          setPosts(data);
-          setIsProcessingHighlight(false);
-          isProcessingRef.current = false;
-          hasCheckedHighlightRef.current = true;
-        }
+        console.log("✅ [Feed] Highlight complete on retry");
       } else {
-        console.log("📭 [Feed] No highlighted post to process, setting normal order");
-        setPosts(data);
+        console.log("❌ [Feed] Element not found after retry");
         isProcessingRef.current = false;
       }
-      
-    } catch (error) {
-      setError('Failed to fetch posts');
-      console.error('Error fetching posts:', error);
-      setIsProcessingHighlight(false);
-      isProcessingRef.current = false;
+    }, 500);
+  }, 300);
+}, [setIsProcessingHighlight]);
+
+const fetchPosts = useCallback(async (forceHighlight = false) => {
+  if (isProcessingRef.current && !forceHighlight) {
+    console.log("⏸️ [Feed] Already processing, skipping fetch");
+    return;
+  }
+  
+  try {
+    isProcessingRef.current = true;
+    const token = localStorage.getItem('token');
+    
+    // ============ CHECK FOR ALL TYPES OF HIGHLIGHTS ============
+    let queryParams = '';
+    
+    // 1. Check for NOTIFICATION highlight
+    const notificationHighlight = localStorage.getItem('notificationHighlight');
+    // 2. Check for SEARCH highlight
+    const searchHighlight = localStorage.getItem('searchHighlightedPost');
+    
+    // Prioritize notification highlight (most recent), then search highlight
+    let highlightData = null;
+    let highlightType = null;
+    
+    if (notificationHighlight) {
+      try {
+        const parsed = JSON.parse(notificationHighlight);
+        // Check if highlight is still valid (less than 15 seconds old)
+        if (Date.now() - parsed.timestamp < 15000) {
+          highlightData = parsed;
+          highlightType = 'notification';
+        } else {
+          // Remove expired highlight
+          localStorage.removeItem('notificationHighlight');
+        }
+      } catch (error) {
+        console.error("❌ [Feed] Error parsing notification highlight:", error);
+        localStorage.removeItem('notificationHighlight');
+      }
     }
-  }, [navigate, scrollAndHighlightPost, setError, setIsProcessingHighlight, setPosts, setHighlightedPostId, setSearchPostData]);
+    
+    if (!highlightData && searchHighlight) {
+      try {
+        const parsed = JSON.parse(searchHighlight);
+        // Check if highlight is still valid (less than 15 seconds old)
+        if (Date.now() - parsed.timestamp < 15000) {
+          highlightData = parsed;
+          highlightType = 'search';
+        } else {
+          // Remove expired highlight
+          localStorage.removeItem('searchHighlightedPost');
+        }
+      } catch (error) {
+        console.error("❌ [Feed] Error parsing search highlight:", error);
+        localStorage.removeItem('searchHighlightedPost');
+      }
+    }
+    
+    // Send highlight to backend if we have one
+    if (highlightData) {
+      queryParams = `?highlight=${encodeURIComponent(JSON.stringify({
+        postId: highlightData.postId,
+        timestamp: highlightData.timestamp,
+        type: highlightType,
+        source: highlightData.from || highlightData.searchQuery || 'unknown'
+      }))}`;
+      console.log(`🎯 [Feed] Sending ${highlightType} highlight to backend`);
+    }
+    
+    // ============ FETCH WITH QUERY PARAM ============
+    const response = await fetch(`http://localhost:5000/api/posts${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate("/");
+      return;
+    }
+
+    const data = await response.json();
+    console.log("📝 [Feed] Fetched", data.length, "posts");
+    
+    // Check for pinned post
+    const pinnedPost = data.find(post => post.isPinned);
+    if (pinnedPost) {
+      console.log("🎯 [Feed] Found pinned post at index:", data.indexOf(pinnedPost));
+      console.log("🎯 [Feed] Pinned post ID:", pinnedPost._id);
+      console.log("🎯 [Feed] Pinned from:", pinnedPost.pinnedFromNotification ? 'notification' : 'search');
+      
+      // Highlight the pinned post
+      setHighlightedPostId(pinnedPost._id);
+      
+      setTimeout(() => {
+        scrollAndHighlightPost(pinnedPost._id, true);
+      }, 300);
+      
+      // Clear the highlight after processing
+      if (highlightType === 'notification') {
+        localStorage.removeItem('notificationHighlight');
+      } else if (highlightType === 'search') {
+        localStorage.removeItem('searchHighlightedPost');
+        sessionStorage.removeItem('highlightedPostId');
+      }
+    }
+    
+    setPosts(data);
+    isProcessingRef.current = false;
+    
+  } catch (error) {
+    setError('Failed to fetch posts');
+    console.error('Error fetching posts:', error);
+    isProcessingRef.current = false;
+  }
+}, [navigate, scrollAndHighlightPost, setError, setPosts, setHighlightedPostId]);
 
   // Fetch all users for PostModal
   const fetchAllUsers = useCallback(async () => {
@@ -1210,6 +1232,16 @@ function Feed() {
       }
     }
   }, [posts, highlightedPostId, isProcessingHighlight, scrollAndHighlightPost]);
+
+    // ADD THE CLEANUP EFFECT HERE:
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem('notificationHighlight');
+      localStorage.removeItem('searchHighlightedPost');
+      sessionStorage.removeItem('highlightedPostId');
+
+    };
+  }, []);
 
   // ==================== MEDIA UPLOAD FUNCTIONS ====================
   const handleFileSelect = (e) => {
@@ -2059,6 +2091,51 @@ function Feed() {
       <ImageCarousel images={images} videos={videos} />
     );
   };
+ // ==================== HIGHLIGHT HELPER FUNCTION ====================
+  const highlightElement = (element, fromNotification = false) => {
+    console.log("✨ [Feed] Highlighting element:", element.id);
+    
+    if (!element) return;
+    
+    // Scroll to element
+    element.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'center'
+    });
+    
+    // Add highlight class
+    element.classList.add('notification-highlighted');
+    
+    // Remove highlight after 15 seconds
+    notificationTimeoutRef.current = setTimeout(() => {
+      element.classList.remove('notification-highlighted');
+      notificationHighlightRef.current = null;
+      console.log("✅ [Feed] Highlight removed after 15 seconds");
+    }, 15000);
+    
+    // Also remove highlight if user scrolls away
+    if (scrollObserverRef.current) {
+      scrollObserverRef.current.disconnect();
+    }
+    
+    scrollObserverRef.current = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting && element.classList.contains('notification-highlighted')) {
+          element.classList.remove('notification-highlighted');
+          scrollObserverRef.current?.disconnect();
+          console.log("↕️ [Feed] Highlight removed due to scrolling away");
+        }
+      });
+    }, { threshold: 0.1 });
+    
+    scrollObserverRef.current.observe(element);
+    
+    // Clean up observer after highlight timeout
+    setTimeout(() => {
+      scrollObserverRef.current?.disconnect();
+    }, 15000);
+  };
+
 
   if (!user) {
     return (
@@ -2073,7 +2150,7 @@ function Feed() {
       {/* Header */}
       <header className="feed-header">
         <div className="header-left">
-          <div className="logo" onClick={() => navigate("/feed")}>💼 CampusConnect</div>
+          <div className="logo" onClick={() => navigate("/feed")}>💼 Swish</div>
           
           {/* SEARCH BAR */}
           <div className="feed-search-wrapper">
@@ -2517,7 +2594,8 @@ function Feed() {
               </div>
             ) : (
               posts.map(post => {
-                const isHighlighted = post._id === highlightedPostId;
+                const isHighlighted = post._id === highlightedPostId || 
+                post._id === notificationHighlightRef.current;
                 const isOwner = user && post.user?.id === user.id;
                 const userRSVPStatus = getUserRSVPStatus(post);
                 

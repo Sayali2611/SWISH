@@ -560,7 +560,7 @@ const PostCard = forwardRef(({ post, user, onLike, onComment, onSave, onFollow, 
         <button className="action-btn share-btn" onClick={() => {
           if (navigator.share) {
             navigator.share({
-              title: 'Check out this post on CampusConnect',
+              title: 'Check out this post on Swish',
               text: post.content.substring(0, 100),
               url: window.location.origin + `/post/${post._id}`
             });
@@ -1292,7 +1292,7 @@ function Explore() {
       {/* Header - Same as Feed with single search bar */}
       <header className="feed-header">
         <div className="header-left">
-          <div className="logo" onClick={() => navigate("/feed")}>💼 CampusConnect</div>
+          <div className="logo" onClick={() => navigate("/feed")}>💼 Swish</div>
           
           {/* SINGLE SEARCH BAR IN NAVBAR */}
           <div className="feed-search-wrapper">

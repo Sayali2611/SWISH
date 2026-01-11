@@ -274,7 +274,7 @@ const ProfilePage = () => {
           >
             ← Back to Feed
           </button>
-          <h1 className="profile-page-title">CampusConnect Profile</h1>
+          <h1 className="profile-page-title">Swish Profile</h1>
           <div className="profile-page-header-actions">
             <Link to="/profile" className="my-profile-link">
               👤 My Profile
