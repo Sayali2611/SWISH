@@ -420,27 +420,7 @@ const ProfilePage = () => {
                     Remove
                   </button>
                 </div>
-              )}
-              
-              {/* Message Button (Always shown except for pending requests) */}
-              {connectionStatus === 'connected' && (
-                <button 
-                  className="profile-page-message-btn"
-                  onClick={handleMessage}
-                >
-                  💬 Message
-                </button>
-              )}
-              
-              {connectionStatus !== 'connected' && connectionStatus !== 'request_sent' && (
-                <button 
-                  className="profile-page-message-btn disabled"
-                  disabled
-                  title="Connect first to send messages"
-                >
-                  💬 Message
-                </button>
-              )}
+              )}          
             </div>
           </div>
         </div>
