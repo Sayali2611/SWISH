@@ -2965,7 +2965,7 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
         </div>
       )}
 
-      {/* Share Modal - UPDATED WITH PROPER VISIBILITY AND CSS CLASSES */}
+      {/* Share - UPDATED WITH PROPER VISIBILITY AND CSS CLASSES */}
         {showShareModal && postToShare && (
           <div className="share-popup-overlay" onClick={closeShareModal}>
             <div className="share-popup" onClick={(e) => e.stopPropagation()}>
