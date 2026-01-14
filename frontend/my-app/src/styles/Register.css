@@ -1,9 +1,9 @@
-/* Register.css - Professional Multi-step Registration */
+/* Register.css - Professional Multi-step Registration - Dark Theme Update */
 
 .register-container {
   min-height: 100vh;
   display: flex;
-  background: #f8fafc;
+  background: #000000; /* Black from test.html */
   position: relative;
   overflow: hidden;
 }
@@ -15,7 +15,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0a0a0a 0%, #121212 100%); /* Surface colors from test.html */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,7 +32,7 @@
 
 .success-content {
   text-align: center;
-  color: white;
+  color: #f9fafb; /* Light text from test.html */
   animation: fadeInUp 0.6s ease-out;
 }
 
@@ -40,6 +40,7 @@
   font-size: 80px;
   margin-bottom: 24px;
   animation: bounce 1s infinite alternate;
+  color: #a78bfa; /* Lavender from test.html */
 }
 
 @keyframes bounce {
@@ -51,10 +52,12 @@
   font-size: 36px;
   margin-bottom: 12px;
   font-weight: 700;
+  color: #f9fafb;
 }
 
 .success-content p {
   font-size: 18px;
+  color: #9ca3af; /* Dim text from test.html */
   opacity: 0.9;
   margin-bottom: 32px;
 }
@@ -62,24 +65,25 @@
 .success-spinner {
   width: 60px;
   height: 60px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top: 4px solid white;
+  border: 4px solid rgba(167, 139, 250, 0.3); /* Lavender with opacity */
+  border-top: 4px solid #a78bfa; /* Lavender from test.html */
   border-radius: 50%;
   margin: 0 auto;
   animation: spin 1s linear infinite;
 }
 
-/* Left Panel */
+/* Left Panel - Updated with dark theme */
 .register-left-panel {
   flex: 1;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  color: white;
+  background: linear-gradient(135deg, #0a0a0a 0%, #121212 100%); /* Surface colors from test.html */
+  color: #f9fafb; /* Light text from test.html */
   padding: 60px 40px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
   overflow: hidden;
+  border-right: 1px solid #1f2937; /* Border color from test.html */
 }
 
 .register-left-panel::before {
@@ -106,13 +110,14 @@
   font-size: 64px;
   margin-bottom: 16px;
   animation: float 3s ease-in-out infinite;
+  color: #a78bfa; /* Lavender from test.html */
 }
 
 .brand-title {
   font-size: 48px;
   font-weight: 800;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #818cf8, #c4b5fd);
+  background: linear-gradient(to right, #a78bfa, #3b82f6); /* Lavender to Royal Blue from test.html */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -123,6 +128,7 @@
   opacity: 0.8;
   letter-spacing: 2px;
   text-transform: uppercase;
+  color: #9ca3af; /* Dim text from test.html */
 }
 
 .features-list {
@@ -141,7 +147,7 @@
 
 .feature-icon {
   font-size: 24px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(167, 139, 250, 0.1); /* Lavender with opacity */
   width: 48px;
   height: 48px;
   border-radius: 12px;
@@ -149,18 +155,21 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: #a78bfa; /* Lavender from test.html */
 }
 
 .feature-text h3 {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 4px;
+  color: #f9fafb; /* Light text from test.html */
 }
 
 .feature-text p {
   font-size: 14px;
   opacity: 0.7;
   line-height: 1.5;
+  color: #9ca3af; /* Dim text from test.html */
 }
 
 .project-info {
@@ -172,6 +181,7 @@
   opacity: 0.7;
   margin-bottom: 4px;
   font-family: 'Courier New', monospace;
+  color: #9ca3af; /* Dim text from test.html */
 }
 
 .project-status {
@@ -179,14 +189,16 @@
   opacity: 0.5;
   text-transform: uppercase;
   letter-spacing: 1px;
+  color: #9ca3af; /* Dim text from test.html */
 }
 
-/* Right Panel */
+/* Right Panel - Updated with dark theme */
 .register-right-panel {
   flex: 1.5;
   padding: 40px;
   overflow-y: auto;
   max-height: 100vh;
+  background: #000000; /* Black from test.html */
 }
 
 .register-header {
@@ -201,7 +213,7 @@
 }
 
 .back-button {
-  color: #64748b;
+  color: #9ca3af; /* Dim text from test.html */
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
@@ -214,27 +226,28 @@
 }
 
 .back-button:hover {
-  background: #f1f5f9;
-  color: #334155;
+  background: #121212; /* Elevated color from test.html */
+  color: #f9fafb; /* Light text from test.html */
+  border: 1px solid #1f2937; /* Border color from test.html */
 }
 
 .step-counter {
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: rgba(167, 139, 250, 0.1); /* Lavender with opacity */
+  color: #a78bfa; /* Lavender from test.html */
   padding: 8px 16px;
   border-radius: 20px;
   font-size: 14px;
   font-weight: 600;
 }
 
-/* Progress Bar */
+/* Progress Bar - Updated with dark theme */
 .progress-container {
   margin-bottom: 40px;
 }
 
 .progress-bar {
   height: 8px;
-  background: #e2e8f0;
+  background: #1f2937; /* Border color from test.html */
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 12px;
@@ -249,14 +262,14 @@
   right: 0;
   bottom: 0;
   background: linear-gradient(90deg, 
-    #e2e8f0 0%, 
-    #e2e8f0 25%, 
-    #cbd5e1 25%, 
-    #cbd5e1 50%, 
-    #94a3b8 50%, 
-    #94a3b8 75%, 
-    #64748b 75%, 
-    #64748b 100%
+    #1f2937 0%, 
+    #1f2937 25%, 
+    #374151 25%, 
+    #374151 50%, 
+    #4b5563 50%, 
+    #4b5563 75%, 
+    #6b7280 75%, 
+    #6b7280 100%
   );
   background-size: 400% 100%;
   animation: progressStripes 2s linear infinite;
@@ -269,7 +282,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  background: linear-gradient(90deg, #a78bfa, #3b82f6); /* Lavender to Royal Blue from test.html */
   border-radius: 4px;
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -284,7 +297,7 @@
 
 .progress-labels span {
   font-size: 12px;
-  color: #94a3b8;
+  color: #9ca3af; /* Dim text from test.html */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -293,7 +306,7 @@
 }
 
 .progress-labels span.active {
-  color: #4f46e5;
+  color: #a78bfa; /* Lavender from test.html */
 }
 
 .progress-labels span::after {
@@ -304,23 +317,23 @@
   transform: translateX(-50%);
   width: 8px;
   height: 8px;
-  background: #cbd5e1;
+  background: #374151;
   border-radius: 50%;
   transition: background 0.3s ease;
 }
 
 .progress-labels span.active::after {
-  background: #4f46e5;
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+  background: #a78bfa; /* Lavender from test.html */
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.2); /* Lavender glow */
 }
 
-/* Register Card */
+/* Register Card - Updated with dark theme */
 .register-card {
-  background: white;
+  background: #0a0a0a; /* Surface color from test.html */
   border-radius: 24px;
   padding: 40px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid #1f2937; /* Border color from test.html */
   animation: fadeIn 0.6s ease-out;
 }
 
@@ -332,19 +345,19 @@
 .step-title {
   font-size: 32px;
   font-weight: 700;
-  color: #1e293b;
+  color: #f9fafb; /* Light text from test.html */
   margin-bottom: 8px;
 }
 
 .step-subtitle {
-  color: #64748b;
+  color: #9ca3af; /* Dim text from test.html */
   font-size: 16px;
 }
 
-/* Error Message */
+/* Error Message - Updated with dark theme */
 .error-message {
-  background: linear-gradient(135deg, #fee2e2, #fecaca);
-  color: #dc2626;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+  color: #ef4444; /* Danger color from test.html */
   padding: 16px 20px;
   border-radius: 12px;
   margin-bottom: 24px;
@@ -352,7 +365,7 @@
   align-items: center;
   gap: 12px;
   animation: shake 0.5s;
-  border-left: 4px solid #dc2626;
+  border-left: 4px solid #ef4444;
 }
 
 .error-icon {
@@ -403,7 +416,7 @@
 .input-group label {
   font-size: 14px;
   font-weight: 600;
-  color: #475569;
+  color: #9ca3af; /* Dim text from test.html */
   display: flex;
   align-items: center;
   gap: 6px;
@@ -411,27 +424,28 @@
 
 .input-hint {
   font-size: 12px;
-  color: #94a3b8;
+  color: #6b7280;
   margin-top: 4px;
 }
 
 .register-input {
   padding: 16px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid #1f2937; /* Border color from test.html */
   border-radius: 12px;
   font-size: 16px;
   transition: all 0.3s ease;
-  background: white;
+  background: #121212; /* Elevated color from test.html */
+  color: #f9fafb; /* Light text from test.html */
 }
 
 .register-input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+  border-color: #a78bfa; /* Lavender from test.html */
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.1); /* Lavender glow */
 }
 
 .register-input::placeholder {
-  color: #94a3b8;
+  color: #6b7280;
 }
 
 .textarea {
@@ -440,7 +454,7 @@
   font-family: inherit;
 }
 
-/* Role Selection */
+/* Role Selection - Updated with dark theme */
 .role-selection {
   animation: fadeIn 0.6s ease-out;
 }
@@ -448,7 +462,7 @@
 .role-label {
   font-size: 18px;
   font-weight: 600;
-  color: #1e293b;
+  color: #f9fafb; /* Light text from test.html */
   margin-bottom: 24px;
   text-align: center;
 }
@@ -461,8 +475,8 @@
 
 .role-card {
   flex: 1;
-  background: white;
-  border: 3px solid #e2e8f0;
+  background: #121212; /* Elevated color from test.html */
+  border: 3px solid #1f2937; /* Border color from test.html */
   border-radius: 16px;
   padding: 32px 24px;
   cursor: pointer;
@@ -482,20 +496,20 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  background: linear-gradient(90deg, #a78bfa, #3b82f6); /* Lavender to Royal Blue from test.html */
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
 
 .role-card:hover {
   transform: translateY(-8px);
-  border-color: #c7d2fe;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border-color: #a78bfa; /* Lavender from test.html */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 .role-card.active {
-  border-color: #4f46e5;
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-color: #a78bfa; /* Lavender from test.html */
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(59, 130, 246, 0.05));
 }
 
 .role-card.active::before {
@@ -506,6 +520,7 @@
   font-size: 48px;
   margin-bottom: 20px;
   transition: transform 0.3s ease;
+  color: #a78bfa; /* Lavender from test.html */
 }
 
 .role-card:hover .role-icon {
@@ -515,12 +530,12 @@
 .role-title {
   font-size: 20px;
   font-weight: 700;
-  color: #1e293b;
+  color: #f9fafb; /* Light text from test.html */
   margin-bottom: 8px;
 }
 
 .role-desc {
-  color: #64748b;
+  color: #9ca3af; /* Dim text from test.html */
   font-size: 14px;
   margin-bottom: 16px;
   line-height: 1.5;
@@ -536,9 +551,9 @@
 
 .role-features li {
   font-size: 13px;
-  color: #64748b;
+  color: #9ca3af; /* Dim text from test.html */
   padding: 8px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #1f2937; /* Border color from test.html */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -546,7 +561,7 @@
 
 .role-features li:before {
   content: '✓';
-  color: #10b981;
+  color: #10b981; /* Success color from test.html */
   font-weight: bold;
 }
 
@@ -554,7 +569,7 @@
   border-bottom: none;
 }
 
-/* Photo Upload */
+/* Photo Upload - Updated with dark theme */
 .photo-upload-section {
   text-align: center;
   animation: fadeIn 0.6s ease-out;
@@ -563,12 +578,12 @@
 .upload-title {
   font-size: 24px;
   font-weight: 700;
-  color: #1e293b;
+  color: #f9fafb; /* Light text from test.html */
   margin-bottom: 8px;
 }
 
 .upload-subtitle {
-  color: #64748b;
+  color: #9ca3af; /* Dim text from test.html */
   margin-bottom: 32px;
 }
 
@@ -587,9 +602,9 @@
   justify-content: center;
   gap: 20px;
   padding: 60px 40px;
-  border: 3px dashed #cbd5e1;
+  border: 3px dashed #1f2937; /* Border color from test.html */
   border-radius: 20px;
-  background: #f8fafc;
+  background: #121212; /* Elevated color from test.html */
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
@@ -597,8 +612,8 @@
 }
 
 .upload-box:hover {
-  border-color: #4f46e5;
-  background: #f1f5f9;
+  border-color: #a78bfa; /* Lavender from test.html */
+  background: #0a0a0a; /* Surface color from test.html */
   transform: translateY(-2px);
 }
 
@@ -609,7 +624,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.1), transparent);
   animation: shimmer 2s infinite;
 }
 
@@ -620,7 +635,7 @@
 
 .upload-icon {
   font-size: 64px;
-  color: #94a3b8;
+  color: #a78bfa; /* Lavender from test.html */
 }
 
 .upload-text {
@@ -632,21 +647,21 @@
 .upload-main {
   font-size: 18px;
   font-weight: 600;
-  color: #475569;
+  color: #f9fafb; /* Light text from test.html */
 }
 
 .upload-hint {
   font-size: 14px;
-  color: #94a3b8;
+  color: #9ca3af; /* Dim text from test.html */
 }
 
 .upload-size {
   font-size: 12px;
-  color: #cbd5e1;
+  color: #6b7280;
   margin-top: 8px;
 }
 
-/* Photo Preview */
+/* Photo Preview - Updated with dark theme */
 .photo-preview {
   position: relative;
   width: 200px;
@@ -654,8 +669,9 @@
   margin: 0 auto;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   animation: scaleIn 0.5s ease-out;
+  border: 3px solid #1f2937; /* Border color from test.html */
 }
 
 .preview-image {
@@ -670,7 +686,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -696,7 +712,7 @@
 }
 
 .remove-photo-btn {
-  background: #ef4444;
+  background: #ef4444; /* Danger color from test.html */
   color: white;
 }
 
@@ -705,26 +721,28 @@
 }
 
 .change-photo-btn {
-  background: #4f46e5;
-  color: white;
+  background: #a78bfa; /* Lavender from test.html */
+  color: black;
+  font-weight: 800;
 }
 
 .change-photo-btn:hover {
-  background: #4338ca;
+  background: #8b5cf6;
 }
 
-/* Photo Tips */
+/* Photo Tips - Updated with dark theme */
 .photo-tips {
-  background: #f0f9ff;
+  background: rgba(167, 139, 250, 0.05); /* Lavender with opacity */
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
   text-align: left;
+  border: 1px solid #1f2937; /* Border color from test.html */
 }
 
 .tips-title {
   font-weight: 600;
-  color: #0369a1;
+  color: #a78bfa; /* Lavender from test.html */
   margin-bottom: 12px;
   display: flex;
   align-items: center;
@@ -739,7 +757,7 @@
 
 .tips-list li {
   padding: 6px 0;
-  color: #475569;
+  color: #9ca3af; /* Dim text from test.html */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -756,7 +774,7 @@
 .skip-btn {
   background: none;
   border: none;
-  color: #64748b;
+  color: #9ca3af; /* Dim text from test.html */
   font-size: 14px;
   cursor: pointer;
   text-decoration: underline;
@@ -764,10 +782,10 @@
 }
 
 .skip-btn:hover {
-  color: #4f46e5;
+  color: #a78bfa; /* Lavender from test.html */
 }
 
-/* Role Details */
+/* Role Details - Updated with dark theme */
 .role-details-section {
   animation: fadeIn 0.6s ease-out;
 }
@@ -776,12 +794,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: white;
+  background: linear-gradient(135deg, #a78bfa, #3b82f6); /* Lavender to Royal Blue from test.html */
+  color: black;
   padding: 12px 24px;
   border-radius: 30px;
-  font-weight: 600;
+  font-weight: 800;
   margin-bottom: 32px;
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.3); /* Lavender glow from test.html */
 }
 
 .admin-verification {
@@ -789,32 +808,34 @@
 }
 
 .verification-note {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #92400e;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+  color: #f59e0b;
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 24px;
   text-align: center;
   font-weight: 600;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .code-hint {
   font-size: 12px;
-  color: #94a3b8;
+  color: #9ca3af; /* Dim text from test.html */
   margin-top: 8px;
   font-style: italic;
 }
 
 .admin-permissions {
-  background: #f8fafc;
+  background: #121212; /* Elevated color from test.html */
   border-radius: 12px;
   padding: 20px;
   margin-top: 24px;
+  border: 1px solid #1f2937; /* Border color from test.html */
 }
 
 .permissions-title {
   font-weight: 600;
-  color: #1e293b;
+  color: #f9fafb; /* Light text from test.html */
   margin-bottom: 12px;
 }
 
@@ -826,7 +847,7 @@
 
 .permissions-list li {
   padding: 8px 0;
-  color: #475569;
+  color: #9ca3af; /* Dim text from test.html */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -834,24 +855,24 @@
 
 .permissions-list li:before {
   content: '✓';
-  color: #10b981;
+  color: #10b981; /* Success color from test.html */
   font-weight: bold;
 }
 
-/* Form Actions */
+/* Form Actions - Updated with dark theme */
 .form-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: 40px;
   padding-top: 24px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #1f2937; /* Border color from test.html */
 }
 
 .btn-secondary {
-  background: #f1f5f9;
-  color: #475569;
-  border: none;
+  background: #121212; /* Elevated color from test.html */
+  color: #9ca3af; /* Dim text from test.html */
+  border: 1px solid #1f2937; /* Border color from test.html */
   padding: 14px 28px;
   border-radius: 12px;
   font-weight: 600;
@@ -863,23 +884,24 @@
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
+  background: #1f2937; /* Border color from test.html */
+  color: #f9fafb; /* Light text from test.html */
   transform: translateX(-4px);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: white;
+  background: linear-gradient(135deg, #a78bfa, #3b82f6); /* Lavender to Royal Blue from test.html */
+  color: black;
   border: none;
   padding: 16px 40px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 8px 20px rgba(167, 139, 250, 0.3); /* Lavender glow from test.html */
   position: relative;
   overflow: hidden;
 }
@@ -901,7 +923,7 @@
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 25px rgba(79, 70, 229, 0.4);
+  box-shadow: 0 12px 25px rgba(167, 139, 250, 0.4); /* Lavender glow from test.html */
 }
 
 .btn-primary:disabled {
@@ -917,39 +939,39 @@
 .action-spinner {
   width: 20px;
   height: 20px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid white;
+  border: 3px solid rgba(0, 0, 0, 0.3);
+  border-top: 3px solid black;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
-/* Form Footer */
+/* Form Footer - Updated with dark theme */
 .form-footer {
   text-align: center;
   padding-top: 24px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #1f2937; /* Border color from test.html */
 }
 
 .footer-text {
-  color: #64748b;
+  color: #9ca3af; /* Dim text from test.html */
   margin-bottom: 12px;
 }
 
 .auth-link {
-  color: #4f46e5;
+  color: #a78bfa; /* Lavender from test.html */
   font-weight: 600;
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
 .auth-link:hover {
-  color: #7c3aed;
+  color: #8b5cf6;
   text-decoration: underline;
 }
 
 .security-note {
   font-size: 12px;
-  color: #94a3b8;
+  color: #9ca3af; /* Dim text from test.html */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -997,6 +1019,22 @@
   }
 }
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .register-container {
@@ -1006,6 +1044,8 @@
   .register-left-panel {
     padding: 40px 20px;
     flex: none;
+    border-right: none;
+    border-bottom: 1px solid #1f2937; /* Border color from test.html */
   }
   
   .features-list {

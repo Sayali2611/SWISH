@@ -3,219 +3,347 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swish | Enhanced Prismatic</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Nexus Premium | College Social</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-
+        /* -----------------------------------------------------------
+        1. THE CORE ENGINE (Variables & Reset)
+        ----------------------------------------------------------- */
         :root {
-            --cobalt: #4338ca;
-            --electric-purple: #7e22ce;
-            --vivid-pink: #db2777;
-            --pro-navy: #0f172a;
-            --glass-card: rgba(255, 255, 255, 0.82);
-            --glass-border: rgba(255, 255, 255, 0.6);
+            --black: #000000;
+            --surface: #0a0a0a;
+            --elevated: #121212;
+            --border: #1f2937;
+            --lavender: #a78bfa;
+            --lavender-glow: rgba(167, 139, 250, 0.3);
+            --royal-blue: #3b82f6;
+            --text-main: #f9fafb;
+            --text-dim: #9ca3af;
+            --danger: #ef4444;
+            --success: #10b981;
+            --radius: 14px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background-color: #f8fafc;
-            min-height: 100vh;
-            /* ENHANCED VIVID MESH BACKGROUND */
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(67, 56, 202, 0.18) 0px, transparent 40%),
-                radial-gradient(at 100% 0%, rgba(219, 39, 119, 0.15) 0px, transparent 40%),
-                radial-gradient(at 100% 100%, rgba(126, 34, 206, 0.12) 0px, transparent 40%),
-                radial-gradient(at 0% 100%, rgba(67, 56, 202, 0.15) 0px, transparent 40%),
-                radial-gradient(at 50% 50%, rgba(219, 39, 119, 0.08) 0px, transparent 60%);
-            background-attachment: fixed;
-            animation: backgroundFlow 20s ease-in-out infinite alternate;
-        }
-
-        /* Subtle motion for the background aura */
-        @keyframes backgroundFlow {
-            0% { background-position: 0% 0%; }
-            100% { background-position: 100% 100%; }
-        }
-
-        /* ===== PROFESSIONAL PRISMATIC CARD (ENHANCED) ===== */
-        .pro-card {
-            background: var(--glass-card);
-            backdrop-filter: blur(25px) saturate(180%);
-            -webkit-backdrop-filter: blur(25px);
-            border-radius: 28px;
-            padding: 30px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 20px 40px -15px rgba(67, 56, 202, 0.1);
-            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-            position: relative;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--black);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
             overflow: hidden;
         }
 
-        /* The Neon Prismatic Stroke */
-        .pro-card::before {
-            content: ''; position: absolute; inset: 0; border-radius: 28px;
-            padding: 2px; 
-            background: linear-gradient(135deg, var(--cobalt), var(--electric-purple), var(--vivid-pink));
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask-composite: exclude;
-            opacity: 0.15; transition: 0.4s;
-        }
-
-        .pro-card:hover {
-            transform: translateY(-8px) scale(1.01);
-            background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 35px 70px -20px rgba(67, 56, 202, 0.2);
-            border-color: rgba(255, 255, 255, 0.9);
-        }
-
-        .pro-card:hover::before { opacity: 1; }
-
-        /* ===== NAV BAR: CRYSTAL EFFECT ===== */
-        nav {
-            padding: 18px 60px;
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            position: sticky; top: 0; z-index: 1000;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+        /* -----------------------------------------------------------
+        2. NAVIGATION (Sidebar)
+        ----------------------------------------------------------- */
+        .sidebar {
+            width: 280px;
+            background-color: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 30px 20px;
         }
 
         .logo {
-            font-size: 2rem; font-weight: 800; letter-spacing: -2px;
-            background: linear-gradient(to right, var(--cobalt), var(--vivid-pink));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+            font-weight: 900;
+            background: linear-gradient(to right, var(--lavender), var(--royal-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 50px;
+            letter-spacing: -1px;
         }
 
-        .btn-pro {
-            background: linear-gradient(135deg, var(--cobalt), var(--electric-purple));
-            color: white; border: none; padding: 12px 28px;
-            border-radius: 14px; font-weight: 700; cursor: pointer;
-            box-shadow: 0 10px 20px rgba(67, 56, 202, 0.2);
-            transition: 0.3s; font-size: 0.85rem;
+        .nav-list { list-style: none; flex-grow: 1; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 18px;
+            margin-bottom: 8px;
+            border-radius: var(--radius);
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: var(--transition);
         }
 
-        .btn-pro:hover {
+        .nav-item:hover, .nav-item.active {
+            background: var(--elevated);
+            color: var(--lavender);
+            border: 1px solid var(--border);
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--lavender);
+            border-radius: 50%;
+            margin-left: auto;
+            box-shadow: 0 0 10px var(--lavender);
+        }
+
+        /* -----------------------------------------------------------
+        3. MAIN FEED AREA
+        ----------------------------------------------------------- */
+        .main-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            scrollbar-width: none;
+        }
+
+        .feed-container { width: 100%; max-width: 680px; }
+
+        /* POST COMPOSER */
+        .composer {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .composer textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.1rem;
+            resize: none;
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* BUTTONS */
+        .btn-glow {
+            background: var(--lavender);
+            color: black;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 0 15px var(--lavender-glow);
+        }
+
+        .btn-glow:hover {
             transform: scale(1.05);
-            box-shadow: 0 15px 30px rgba(126, 34, 206, 0.3);
+            box-shadow: 0 0 25px var(--lavender-glow);
         }
 
-        /* ===== LAYOUT ENGINE ===== */
-        .grid-engine {
-            max-width: 1400px; margin: 50px auto;
-            display: grid; grid-template-columns: 320px 1fr 320px;
-            gap: 35px; padding: 0 30px;
+        /* POST CARDS */
+        .post-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            margin-bottom: 25px;
+            transition: var(--transition);
         }
 
-        .avatar-frame {
-            width: 75px; height: 75px; border-radius: 24px;
-            background: linear-gradient(135deg, var(--cobalt), var(--electric-purple));
-            color: white; display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 1.5rem;
-            box-shadow: 0 10px 20px rgba(67, 56, 202, 0.2);
-            border: 2px solid white;
+        .post-card:hover { border-color: var(--lavender); }
+
+        .post-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .tag-label {
-            font-weight: 800; font-size: 0.7rem; color: var(--vivid-pink);
-            text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block;
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+            border: 2px solid var(--border);
         }
 
-        .composer-input {
-            width: 100%; border: 1px solid rgba(0,0,0,0.05); background: white;
-            padding: 18px 25px; border-radius: 20px; font-size: 1rem;
-            outline: none; transition: 0.4s;
-        }
-        .composer-input:focus { border-color: var(--cobalt); box-shadow: 0 0 0 5px rgba(67, 56, 202, 0.08); }
+        .post-body { padding: 0 20px 20px 20px; line-height: 1.6; font-size: 1.05rem; }
 
-        @media (max-width: 1250px) {
-            .grid-engine { grid-template-columns: 1fr; }
-            aside { display: none; }
+        .post-media {
+            width: 100%;
+            height: 350px;
+            background: var(--elevated);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
         }
+
+        .post-actions {
+            padding: 15px 20px;
+            display: flex;
+            gap: 25px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .action-btn:hover { color: var(--lavender); }
+        .action-btn.report:hover { color: var(--danger); }
+
+        /* -----------------------------------------------------------
+        4. RIGHT PANEL (Network & Status)
+        ----------------------------------------------------------- */
+        .right-panel {
+            width: 340px;
+            background-color: var(--surface);
+            border-left: 1px solid var(--border);
+            padding: 30px 20px;
+        }
+
+        .section-title {
+            color: var(--text-dim);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .network-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .online-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success);
+            margin-left: auto;
+        }
+
+        /* -----------------------------------------------------------
+        5. CUSTOM SCROLLBAR
+        ----------------------------------------------------------- */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--black); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
     </style>
 </head>
 <body>
 
-    <nav>
-        <div class="logo">Swish.</div>
-        <div style="display: flex; gap: 40px; align-items: center;">
-            <a href="#" style="text-decoration: none; color: var(--pro-navy); font-weight: 700;">Showcase</a>
-            <button class="btn-pro">Synchronize</button>
+    <nav class="sidebar">
+        <div class="logo">NEXUS.AI</div>
+        
+        <div class="nav-list">
+            <a href="#" class="nav-item active">Feed</a>
+            <a href="#" class="nav-item">Network <div class="badge-dot"></div></a>
+            <a href="#" class="nav-item">Messages</a>
+            <a href="#" class="nav-item">Notifications</a>
+            <a href="#" class="nav-item">Profile</a>
+        </div>
+
+        <div style="padding: 20px; background: var(--elevated); border-radius: var(--radius);">
+            <p style="font-size: 0.8rem; color: var(--text-dim);">COLLEGE RANK</p>
+            <p style="font-weight: 800; color: var(--lavender);">#4 TOP CONTRIBUTOR</p>
         </div>
     </nav>
 
-    <div class="grid-engine">
-        <aside>
-            <div class="pro-card" style="text-align: center;">
-                <div class="avatar-frame" style="margin: 0 auto 25px;">SB</div>
-                <h2 style="font-weight: 800;">Sayali Bhanage</h2>
-                <p style="color: #64748b; font-weight: 600; font-size: 0.9rem; margin-top: 5px;">UI Architect</p>
-                
-                <div style="margin-top: 35px; background: rgba(255,255,255,0.6); padding: 25px; border-radius: 24px; border: 1px solid white;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                        <span style="font-weight: 700; color: #64748b; font-size: 0.85rem;">Trust Score</span>
-                        <b style="color: var(--cobalt);">99.2%</b>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span style="font-weight: 700; color: #64748b; font-size: 0.85rem;">Network Nodes</span>
-                        <b style="color: var(--vivid-pink);">412</b>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <main>
-            <div class="pro-card" style="margin-bottom: 35px; padding: 20px;">
-                <div style="display: flex; gap: 20px; align-items: center;">
-                    <div class="avatar-frame" style="width: 50px; height: 50px; font-size: 1rem;">SB</div>
-                    <input type="text" class="composer-input" placeholder="Initiate a new breakthrough...">
+    <main class="main-content">
+        <div class="feed-container">
+            
+            <div class="composer">
+                <textarea rows="2" placeholder="Share your latest research or campus news..."></textarea>
+                <div class="action-row">
+                    <span style="color: var(--text-dim); font-size: 0.85rem;">+ Attach Project Files</span>
+                    <button class="btn-glow">Post Content</button>
                 </div>
             </div>
 
-            <article class="pro-card">
-                <span class="tag-label">Featured Insight</span>
-                <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 25px;">
-                    <div class="avatar-frame" style="background: white; color: var(--cobalt); width: 60px; height: 60px;">AK</div>
+            <article class="post-card">
+                <div class="post-header">
+                    <div class="avatar"></div>
                     <div>
-                        <h4 style="font-weight: 800; font-size: 1.2rem;">Aryan Kohli</h4>
-                        <p style="color: #94a3b8; font-size: 0.8rem; font-weight: 700;">Systems Engineer • 12m ago</p>
+                        <strong>Julian Voss</strong><br>
+                        <small style="color: var(--text-dim);">Computer Engineering • 24m ago</small>
                     </div>
                 </div>
-
-                <p style="font-size: 1.15rem; line-height: 1.8; color: #1e293b; margin-bottom: 30px; font-weight: 500;">
-                    The **Vivid-Pro** interface is now active. We've increased the background mesh saturation by 2x while maintaining high-readability glass surfaces. 🚀
-                </p>
-
-                <div style="width: 100%; height: 350px; background: linear-gradient(45deg, #eef2ff, #fdf2f8); border-radius: 24px; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid white;">
-                    <i class="fas fa-microchip fa-5x" style="color: var(--cobalt); opacity: 0.3; filter: drop-shadow(0 0 20px rgba(67,56,202,0.2));"></i>
+                <div class="post-body">
+                    Just finished the documentation for the new campus-wide IoT network. Check it out in the library portal!
                 </div>
-
-                <div style="display: flex; gap: 35px; margin-top: 30px; padding-top: 25px; border-top: 1px solid rgba(0,0,0,0.05);">
-                    <span style="font-weight: 800; color: var(--vivid-pink);"><i class="fas fa-heart"></i> 1,402</span>
-                    <span style="font-weight: 800; color: #64748b;"><i class="fas fa-comment"></i> 89</span>
-                    <span style="margin-left: auto; color: var(--cobalt);"><i class="fas fa-share-nodes"></i></span>
+                <div class="post-actions">
+                    <button class="action-btn">Upvote 128</button>
+                    <button class="action-btn">Discuss 14</button>
+                    <button class="action-btn report">Report</button>
                 </div>
             </article>
-        </main>
 
-        <aside>
-            <div class="pro-card">
-                <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--pro-navy); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 25px;">Active Streams</h4>
-                <div style="display: grid; gap: 20px;">
-                    <div style="border-left: 4px solid var(--cobalt); padding-left: 15px;">
-                        <p style="font-weight: 800;">#Neural_Architecture</p>
-                        <p style="font-size: 0.75rem; color: #64748b;">2.4k architects active</p>
-                    </div>
-                    <div style="border-left: 4px solid var(--vivid-pink); padding-left: 15px;">
-                        <p style="font-weight: 800;">#Prismatic_Design</p>
-                        <p style="font-size: 0.75rem; color: #64748b;">1.1k architects active</p>
+            <article class="post-card">
+                <div class="post-header">
+                    <div class="avatar" style="background: var(--royal-blue);"></div>
+                    <div>
+                        <strong>Design Lab</strong><br>
+                        <small style="color: var(--text-dim);">Official Account • 3h ago</small>
                     </div>
                 </div>
-                <button class="btn-pro" style="width: 100%; margin-top: 35px; background: white; color: var(--cobalt); border: 2px solid var(--cobalt); box-shadow: none;">Enter Stream</button>
+                <div class="post-media"></div>
+                <div class="post-body">
+                    The showcase for 2026 Grad Projects starts next Monday. Be there!
+                </div>
+                <div class="post-actions">
+                    <button class="action-btn">Upvote 850</button>
+                    <button class="action-btn">Discuss 92</button>
+                    <button class="action-btn report">Report</button>
+                </div>
+            </article>
+
+        </div>
+    </main>
+
+    <aside class="right-panel">
+        <span class="section-title">Active Now</span>
+        
+        <div class="network-item">
+            <div class="avatar" style="width:35px; height:35px;"></div>
+            <div>
+                <p style="font-size: 0.9rem; font-weight: 600;">Dr. Aris Thorne</p>
+                <small style="color: var(--text-dim);">In Office</small>
             </div>
-        </aside>
-    </div>
+            <div class="online-dot"></div>
+        </div>
+
+        <div class="network-item">
+            <div class="avatar" style="width:35px; height:35px; background: var(--lavender);"></div>
+            <div>
+                <p style="font-size: 0.9rem; font-weight: 600;">Sarah Kim</p>
+                <small style="color: var(--text-dim);">Typing...</small>
+            </div>
+            <div class="online-dot"></div>
+        </div>
+
+        <div style="margin-top: 50px;">
+            <span class="section-title">Recent Alerts</span>
+            <div style="padding:15px; background: var(--elevated); border-radius: var(--radius); border-left: 4px solid var(--lavender);">
+                <p style="font-size: 0.85rem;"><strong>Report Update:</strong> Your report on "Post #441" has been reviewed. Content removed.</p>
+            </div>
+        </div>
+    </aside>
 
 </body>
 </html>

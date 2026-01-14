@@ -58,7 +58,7 @@ function Login() {
   return (
     <div className="login-page-container">
       <form className="login-form" onSubmit={handleLogin}>
-        <div className="login-title">🚀 Welcome to Swish</div>
+        <div className="login-title">Welcome to Swish</div>
         <p className="login-subtitle">Connect with your campus community</p>
         
         {error && <div className="error-message">{error}</div>}

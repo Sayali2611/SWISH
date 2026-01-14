@@ -1,31 +1,59 @@
-/* PostModal.css - Combined Likes + Comments Modal */
+/* -----------------------------------------------------------
+   NEXUS PREMIUM DARK THEME - PostModal.css
+   Professional refinement of test.html theme
+----------------------------------------------------------- */
+/* Original test.html variables with slight refinements */
+:root {
+    --black: #000000;
+    --surface: #0a0a0a;
+    --elevated: #121212;
+    --border: #1f2937;
+    --border-light: #2d3748;
+    --lavender: #a78bfa;
+    --lavender-dark: #8b5cf6;
+    --lavender-glow: rgba(167, 139, 250, 0.2);
+    --royal-blue: #3b82f6;
+    --royal-blue-dark: #2563eb;
+    --text-main: #f9fafb;
+    --text-dim: #9ca3af;
+    --text-muted: #6b7280;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --success: #10b981;
+    --radius: 14px;
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* PostModal.css - Professional refinement of test.html theme */
 .post-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
   padding: 20px;
 }
 
 .post-modal {
-  background: white;
+  background: var(--surface);
   width: 500px;
   max-width: 90vw;
   height: 600px;
   max-height: 85vh;
-  border-radius: 12px;
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow);
   animation: modalSlideIn 0.3s ease;
+  border: 1px solid var(--border);
 }
 
 @keyframes modalSlideIn {
@@ -39,14 +67,14 @@
   }
 }
 
-/* Header */
+/* Header - Matches test.html sidebar */
 .post-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e4e6eb;
-  background: #fff;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -57,52 +85,55 @@
 }
 
 .post-modal-title h3 {
-  margin: 0 0 12px 0;
+  margin: 0 0 16px 0;
   font-size: 20px;
-  font-weight: 600;
-  color: #050505;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .post-modal-tabs {
   display: flex;
   gap: 4px;
-  background: #f0f2f5;
+  background: var(--elevated);
   padding: 4px;
   border-radius: 8px;
+  border: 1px solid var(--border);
 }
 
 .post-modal-tab {
   flex: 1;
   background: none;
   border: none;
-  padding: 8px 16px;
+  padding: 10px 18px;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
-  color: #65676b;
+  color: var(--text-dim);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .post-modal-tab:hover {
-  background: #e4e6eb;
+  background: var(--border);
+  color: var(--lavender);
 }
 
 .post-modal-tab.active {
-  background: white;
-  color: #050505;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: var(--lavender);
+  color: var(--black);
+  font-weight: 700;
+  box-shadow: 0 0 15px var(--lavender-glow);
 }
 
 .post-modal-close {
-  background: #f0f2f5;
-  border: none;
-  font-size: 24px;
-  color: #65676b;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  font-size: 20px;
+  color: var(--text-dim);
   cursor: pointer;
   width: 36px;
   height: 36px;
@@ -110,14 +141,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  margin-left: 12px;
+  transition: var(--transition);
+  margin-left: 16px;
   flex-shrink: 0;
 }
 
 .post-modal-close:hover {
-  background: #e4e6eb;
-  color: #050505;
+  background: var(--lavender);
+  color: var(--black);
+  border-color: var(--lavender);
 }
 
 /* Content Area */
@@ -128,42 +160,41 @@
   flex-direction: column;
 }
 
-/* Post Preview */
+/* Post Preview - Matches test.html post cards */
 .modal-post-preview {
-  padding: 20px;
-  border-bottom: 1px solid #f0f2f5;
-  background: #fafafa;
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .modal-post-user {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .modal-avatar-img {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 2px solid var(--border);
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
 }
 
 .modal-avatar-initials {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: white;
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+  color: var(--black);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   font-weight: 700;
-  border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 2px solid var(--border);
 }
 
 .modal-post-user-info {
@@ -171,47 +202,57 @@
 }
 
 .modal-post-username {
-  font-weight: 600;
-  font-size: 15px;
-  color: #050505;
-  margin-bottom: 2px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-main);
+  margin-bottom: 4px;
 }
 
 .modal-post-time {
   font-size: 13px;
-  color: #65676b;
+  color: var(--text-dim);
+  font-weight: 500;
 }
 
 .modal-post-text {
   font-size: 15px;
-  line-height: 1.4;
-  color: #050505;
-  padding-left: 52px;
+  line-height: 1.6;
+  color: var(--text-main);
+  padding-left: 56px;
 }
 
-/* Likes Tab */
+/* Likes Tab - Matches test.html design */
 .modal-likes-tab {
-  padding: 20px;
+  padding: 24px;
 }
 
 .likes-count-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f2f5;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
 }
 
 .likes-count-icon {
   font-size: 24px;
+  color: var(--lavender);
+  background: rgba(167, 139, 250, 0.1);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(167, 139, 250, 0.2);
 }
 
 .likes-count-header h4 {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
-  color: #050505;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .likes-list {
@@ -223,18 +264,55 @@
 .like-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--radius);
+  transition: var(--transition);
+  border: 1px solid var(--border);
+  background: var(--elevated);
 }
 
 .like-item:hover {
-  background: #f0f2f5;
+  background: var(--surface);
+  border-color: var(--lavender);
+  transform: translateX(4px);
 }
 
 .like-user-avatar {
   flex-shrink: 0;
+}
+
+.like-user-avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+  transition: var(--transition);
+}
+
+.like-item:hover .like-user-avatar-img {
+  border-color: var(--lavender);
+}
+
+.like-user-avatar-initials {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  transition: var(--transition);
+}
+
+.like-item:hover .like-user-avatar-initials {
+  border-color: var(--lavender);
 }
 
 .like-user-info {
@@ -242,25 +320,48 @@
 }
 
 .like-user-name {
-  font-weight: 600;
-  font-size: 14px;
-  color: #050505;
-  margin-bottom: 2px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.like-user-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 .like-user-department {
-  font-size: 13px;
-  color: #65676b;
+  background: rgba(167, 139, 250, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: var(--lavender);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.like-user-time {
+  color: var(--text-dim);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .no-likes {
   text-align: center;
-  padding: 40px 20px;
-  color: #65676b;
+  padding: 48px 24px;
+  color: var(--text-dim);
   font-size: 14px;
+  background: var(--elevated);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
 }
 
-/* Comments Tab */
+/* Comments Tab - Matches test.html design */
 .modal-comments-tab {
   flex: 1;
   display: flex;
@@ -270,7 +371,7 @@
 .comments-list-container {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px;
 }
 
 .comments-list {
@@ -281,17 +382,54 @@
 
 .comment-item {
   display: flex;
-  gap: 12px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f2f5;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--elevated);
+  transition: var(--transition);
 }
 
-.comment-item:last-child {
-  border-bottom: none;
+.comment-item:hover {
+  border-color: var(--lavender);
+  background: var(--surface);
 }
 
 .comment-avatar {
   flex-shrink: 0;
+}
+
+.comment-avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+  transition: var(--transition);
+}
+
+.comment-item:hover .comment-avatar-img {
+  border-color: var(--lavender);
+}
+
+.comment-avatar-initials {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  transition: var(--transition);
+}
+
+.comment-item:hover .comment-avatar-initials {
+  border-color: var(--lavender);
 }
 
 .comment-content {
@@ -303,23 +441,25 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
 }
 
 .comment-user-info {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .comment-username {
-  font-weight: 600;
-  font-size: 14px;
-  color: #050505;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-main);
 }
 
 .comment-time {
   font-size: 12px;
-  color: #65676b;
+  color: var(--text-dim);
+  font-weight: 500;
 }
 
 .comment-actions {
@@ -332,119 +472,148 @@
   border: none;
   font-size: 12px;
   font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
 }
 
 .edit-btn {
-  color: #65676b;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .edit-btn:hover {
-  background: #f0f2f5;
-  color: #050505;
+  background: var(--border);
+  color: var(--lavender);
+  border-color: var(--lavender);
 }
 
 .delete-btn {
-  color: #f02849;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .delete-btn:hover {
-  background: #ffe4e8;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger);
 }
 
 .save-btn {
-  background: #1b74e4;
-  color: white;
+  background: var(--lavender);
+  color: var(--black);
+  border: none;
+  font-weight: 700;
 }
 
 .save-btn:hover {
-  background: #166fe5;
+  background: var(--royal-blue);
 }
 
 .cancel-btn {
-  background: #e4e6eb;
-  color: #050505;
+  background: var(--border);
+  color: var(--text-main);
+  border: none;
 }
 
 .cancel-btn:hover {
-  background: #d8dadf;
+  background: var(--border-light);
 }
 
 .comment-edit-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #dddfe2;
-  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
-  min-height: 60px;
-  margin: 8px 0;
+  min-height: 80px;
+  margin: 12px 0;
+  background: var(--surface);
+  color: var(--text-main);
+  line-height: 1.6;
+  transition: var(--transition);
 }
 
 .comment-edit-input:focus {
   outline: none;
-  border-color: #1b74e4;
+  border-color: var(--lavender);
+  box-shadow: 0 0 0 3px var(--lavender-glow);
+  background: var(--elevated);
 }
 
 .comment-text {
   font-size: 14px;
-  line-height: 1.4;
-  color: #050505;
-  margin: 8px 0;
+  line-height: 1.6;
+  color: var(--text-main);
+  margin: 12px 0;
   word-break: break-word;
 }
 
 .comment-footer {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .comment-like-btn {
   background: none;
   border: none;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: #65676b;
+  color: var(--text-dim);
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
 }
 
 .comment-like-btn:hover {
-  background: #f0f2f5;
-  color: #1b74e4;
+  background: rgba(167, 139, 250, 0.1);
+  color: var(--lavender);
+  border-color: rgba(167, 139, 250, 0.2);
 }
 
 .comment-like-btn.liked {
-  color: #1b74e4;
+  color: var(--lavender);
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  font-weight: 700;
 }
 
 .comment-likes-count {
   font-size: 12px;
-  color: #65676b;
+  color: var(--text-dim);
+  font-weight: 500;
 }
 
 .no-comments {
   text-align: center;
-  padding: 40px 20px;
-  color: #65676b;
+  padding: 48px 24px;
+  color: var(--text-dim);
   font-size: 14px;
+  background: var(--elevated);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
 }
 
-/* Add Comment Section */
+/* Add Comment Section - Matches test.html composer */
 .add-comment-section {
-  padding: 16px 20px;
-  border-top: 1px solid #e4e6eb;
-  background: #fff;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
 }
 
@@ -452,14 +621,54 @@
   flex-shrink: 0;
 }
 
+.add-comment-avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+  transition: var(--transition);
+}
+
+.add-comment-avatar-img:hover {
+  border-color: var(--lavender);
+}
+
+.add-comment-avatar-initials {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, var(--lavender), var(--royal-blue));
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  transition: var(--transition);
+}
+
+.add-comment-avatar-initials:hover {
+  border-color: var(--lavender);
+}
+
 .add-comment-form {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #f0f2f5;
+  background: var(--elevated);
   border-radius: 20px;
-  padding: 4px 4px 4px 16px;
+  padding: 6px 6px 6px 16px;
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+
+.add-comment-form:focus-within {
+  border-color: var(--lavender);
+  box-shadow: 0 0 0 3px var(--lavender-glow);
 }
 
 .add-comment-input {
@@ -468,56 +677,60 @@
   background: none;
   outline: none;
   font-size: 14px;
-  color: #050505;
+  color: var(--text-main);
   padding: 8px 0;
 }
 
 .add-comment-input::placeholder {
-  color: #65676b;
+  color: var(--text-dim);
 }
 
 .add-comment-btn {
-  background: #1b74e4;
-  color: white;
+  background: var(--lavender);
+  color: var(--black);
   border: none;
-  padding: 8px 16px;
+  padding: 10px 20px;
   border-radius: 16px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
   white-space: nowrap;
 }
 
 .add-comment-btn:hover:not(:disabled) {
-  background: #166fe5;
+  background: var(--royal-blue);
+  transform: scale(1.05);
+  box-shadow: 0 0 15px var(--lavender-glow);
 }
 
 .add-comment-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: var(--border);
+  color: var(--text-dim);
 }
 
-/* Scrollbar Styling */
+/* Scrollbar Styling - Matches test.html */
 .post-modal-content::-webkit-scrollbar,
 .comments-list-container::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 .post-modal-content::-webkit-scrollbar-track,
 .comments-list-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--black);
 }
 
 .post-modal-content::-webkit-scrollbar-thumb,
 .comments-list-container::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+  background: var(--border);
+  border-radius: 10px;
 }
 
 .post-modal-content::-webkit-scrollbar-thumb:hover,
 .comments-list-container::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--lavender);
 }
 
 /* Responsive */
@@ -529,33 +742,33 @@
   }
   
   .post-modal-header {
-    padding: 14px 16px;
+    padding: 16px 20px;
   }
   
   .modal-post-preview,
   .modal-likes-tab,
   .comments-list-container {
-    padding: 16px;
+    padding: 20px;
   }
   
   .post-modal-tabs {
     flex-direction: column;
   }
-}
-.like-user-meta {
-  display: flex;
-  gap: 8px;
-  font-size: 12px;
-  color: #65676b;
-  margin-top: 2px;
-}
-
-.like-user-department {
-  background: #f0f2f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.like-user-time {
-  color: #8a8d91;
+  
+  .post-modal-tab {
+    padding: 12px;
+  }
+  
+  .modal-post-text {
+    padding-left: 0;
+    margin-top: 16px;
+  }
+  
+  .comment-item {
+    padding: 16px;
+  }
+  
+  .add-comment-section {
+    padding: 16px 20px;
+  }
 }
