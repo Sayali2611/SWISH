@@ -1323,7 +1323,7 @@ function Explore() {
         </div>
         <div className="header-right">
           <div className="user-info">
-            <span className="user-name">Explore, {user.name}</span>
+            <span className="user-name">Welcome, {user.name}</span>
             <div 
               className="user-avatar" 
               title="View Profile"
