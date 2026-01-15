@@ -16,9 +16,8 @@ function Login() {
     setLoading(true);
     setError("");
 
-    // Validate university email
     if (!formData.email.endsWith('@sigce.edu')) {
-      setError("Please use your SIGCE email address (@sigce.edu)");
+      setError("Please use your SIGCE institutional email (@sigce.edu)");
       setLoading(false);
       return;
     }
@@ -38,18 +37,14 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // Save token and user data
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Show success message
-        setError(""); // Clear any previous errors
         navigate("/feed");
       } else {
-        setError(data.message || 'Login failed. Please check your credentials.');
+        setError(data.message || 'Invalid credentials. Please try again.');
       }
     } catch (error) {
-      setError('Network error: Unable to connect to server.');
+      setError('Connection error. Please check your network.');
     } finally {
       setLoading(false);
     }
@@ -58,37 +53,60 @@ function Login() {
   return (
     <div className="login-page-container">
       <form className="login-form" onSubmit={handleLogin}>
-        <div className="login-title">Welcome to Swish</div>
-        <p className="login-subtitle">Connect with your campus community</p>
+        {/* Clean header without emoji */}
+        <div className="login-header">
+          <div className="login-title">Swish</div>
+          <p className="login-subtitle">
+            SIGCE Campus Network
+          </p>
+        </div>
         
-        {error && <div className="error-message">{error}</div>}
+        {/* Error Display */}
+        {error && <div className="error-message">⚠️ {error}</div>}
         
-        <input 
-          type="email" 
-          className="login-input" 
-          placeholder="📧 Enter your SIGCE email" 
-          value={formData.email}
-          onChange={(e) => setFormData({...formData, email: e.target.value})}
-          required
-        />
-        <input 
-          type="password" 
-          className="login-input" 
-          placeholder="🔒 Enter your password" 
-          value={formData.password}
-          onChange={(e) => setFormData({...formData, password: e.target.value})}
-          required
-        />
+        {/* Input Fields */}
+        <div className="input-group">
+          <label className="input-label">SIGCE Email Address</label>
+          <input 
+            type="email" 
+            className="login-input" 
+            placeholder="username@sigce.edu" 
+            value={formData.email}
+            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            required
+          />
+        </div>
+        
+        <div className="input-group">
+          <label className="input-label">Password</label>
+          <input 
+            type="password" 
+            className="login-input" 
+            placeholder="Enter your password" 
+            value={formData.password}
+            onChange={(e) => setFormData({...formData, password: e.target.value})}
+            required
+          />
+        </div>
+        
+        {/* Login Button */}
         <button 
           className="login-button" 
           type="submit"
           disabled={loading}
         >
-          {loading ? '🔐 Logging in...' : '🎯 Login'}
+          {loading ? (
+            <span className="button-loading">
+              <span className="spinner"></span> Signing in...
+            </span>
+          ) : 'Sign In to Swish'}
         </button>
+        
+        {/* Registration Link */}
         <p className="login-footer">
-          New to Swish? <Link to="/register" className="auth-link">Join now</Link>
+          New to campus? <Link to="/register" className="auth-link">Create your account</Link>
         </p>
+        
       </form>
     </div>
   );
