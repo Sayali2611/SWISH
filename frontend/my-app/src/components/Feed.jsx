@@ -555,7 +555,7 @@ function Feed() {
   const [rsvpLoading, setRsvpLoading] = useState({});
   const [voteLoading, setVoteLoading] = useState({});
 
-  // NEW STATES FOR SHARE FUNCTIONALITY - UPDATED WITH FIXES
+  // SHARE STATES
   const [showShareModal, setShowShareModal] = useState(false);
   const [postToShare, setPostToShare] = useState(null);
   const [connections, setConnections] = useState([]);
@@ -586,12 +586,6 @@ function Feed() {
       
       if (response.ok) {
         const freshUser = await response.json();
-        console.log("🔄 Fresh user data with restriction:", {
-          status: freshUser.status,
-          restrictedUntil: freshUser.restrictedUntil,
-          restrictionReason: freshUser.restrictionReason
-        });
-        
         setUser(freshUser);
         localStorage.setItem('user', JSON.stringify(freshUser));
       }
@@ -600,50 +594,31 @@ function Feed() {
     }
   }, []);
 
-  // UPDATED: Simplified restriction check - only blocks if there's clear evidence of restriction
+  // UPDATED: Simplified restriction check
   const handleRestrictedAction = () => {
-    console.log("🔍 Checking restriction for user:", user?.name);
+    if (!user) return false;
     
-    if (!user) {
-      console.log("🔍 No user found");
-      return false; // Changed to false to allow action
-    }
-    
-    // Check if user is explicitly restricted
     const userStatus = user.status || 'active';
     const restrictedUntil = user.restrictedUntil || null;
 
-    // Only block if user is explicitly marked as restricted AND has a valid restriction date
     if (userStatus === 'restricted' && restrictedUntil) {
       const now = new Date();
       const restrictionEnd = new Date(restrictedUntil);
-    
-      console.log("🔍 Now:", now);
-      console.log("🔍 Restriction end:", restrictionEnd);
-      console.log("🔍 Is restricted?", restrictionEnd > now);
       
       if (restrictionEnd > now) {
         const formattedDate = restrictionEnd.toLocaleString();
-        const message = `⏸️ Your account is restricted until ${formattedDate}. You cannot post, comment, like, or connect during this time.`;
-        
-        console.log("🔍 Showing restriction message:", message);
-        setError(message);
-        return true; // Block action
+        setError(`⏸️ Your account is restricted until ${formattedDate}. You cannot post, comment, like, or connect during this time.`);
+        return true;
       } else {
-        console.log("🔍 Restriction expired, auto-removing");
-        // Restriction expired, update user status
         setUser(prev => ({
           ...prev,
           status: 'active',
           restrictedUntil: null
         }));
-        return false; // Allow action
+        return false;
       }
-    } else {
-      console.log("🔍 User is not restricted - status:", userStatus, "restrictedUntil:", restrictedUntil);
-      // If status is undefined or null, treat as active
-      return false; // Allow action
     }
+    return false;
   };
 
   // Cleanup preview URLs
@@ -657,301 +632,249 @@ function Feed() {
     };
   }, [mediaPreviews]);
 
-  // Block ALL alerts
+  // Event listeners for highlights
   useEffect(() => {
-    const originalAlert = window.alert;
-    window.alert = function(msg) {
-      console.log("Alert blocked:", msg);
-      return;
+    const handleFeedHighlight = () => {
+      const now = Date.now();
+      if (now - lastHighlightTimeRef.current < 1000) return;
+      
+      if (isProcessingRef.current) return;
+      
+      lastHighlightTimeRef.current = now;
+      hasCheckedHighlightRef.current = false;
+      isProcessingRef.current = false;
+      
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      
+      highlightTimeoutRef.current = setTimeout(() => {
+        fetchPosts(true);
+      }, 100);
+    };
+
+    const handleNotificationHighlight = (event) => {
+      const postId = event.detail?.postId;
+      if (!postId) return;
+      
+      const highlightData = {
+        postId: postId,
+        timestamp: Date.now(),
+        from: 'notification'
+      };
+      localStorage.setItem('notificationHighlight', JSON.stringify(highlightData));
+      
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+      
+      fetchPosts(true);
+      
+      notificationTimeoutRef.current = setTimeout(() => {
+        localStorage.removeItem('notificationHighlight');
+        notificationTimeoutRef.current = null;
+      }, 15000);
+    };
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'searchHighlightedPost' && e.newValue) {
+        const now = Date.now();
+        if (now - lastHighlightTimeRef.current > 1000) {
+          handleFeedHighlight();
+        }
+      }
+    };
+
+    window.addEventListener('feedHighlight', handleFeedHighlight);
+    window.addEventListener('notificationHighlight', handleNotificationHighlight);
+    window.addEventListener('storage', handleStorageChange);
+
+    window.triggerFeedHighlight = handleFeedHighlight;
+    window.refreshFeedPosts = () => {
+      setRefreshTrigger(prev => prev + 1);
     };
 
     return () => {
-      window.alert = originalAlert;
+      window.removeEventListener('feedHighlight', handleFeedHighlight);
+      window.removeEventListener('notificationHighlight', handleNotificationHighlight);
+      window.removeEventListener('storage', handleStorageChange);
+      delete window.triggerFeedHighlight;
+      delete window.refreshFeedPosts;
+      
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
     };
   }, []);
 
-// Listen for custom events from ExploreSearch
-useEffect(() => {
-  console.log("🎯 [Feed] Setting up event listeners");
-  
-  const handleFeedHighlight = () => {
-    const now = Date.now();
-    if (now - lastHighlightTimeRef.current < 1000) {
-      console.log("⏸️ [Feed] Too soon since last highlight, skipping");
-      return;
-    }
+  // Highlight element function
+  const highlightElement = (element, fromNotification = false) => {
+    if (!element) return;
     
-    if (isProcessingRef.current) {
-      console.log("⏸️ [Feed] Already processing, skipping duplicate event");
-      return;
-    }
-    
-    console.log("🚀 [Feed] Received feedHighlight event");
-    lastHighlightTimeRef.current = now;
-    hasCheckedHighlightRef.current = false;
-    isProcessingRef.current = false;
-    
-    if (highlightTimeoutRef.current) {
-      clearTimeout(highlightTimeoutRef.current);
-    }
-    
-    highlightTimeoutRef.current = setTimeout(() => {
-      fetchPosts(true);
-    }, 100);
-  };
-
-const handleNotificationHighlight = (event) => {
-  const postId = event.detail?.postId;
-  if (!postId) return;
-  
-  console.log("🔔 [Feed] Received notification highlight for post:", postId);
-  
-  // Store in localStorage for the fetchPosts function
-  const highlightData = {
-    postId: postId,
-    timestamp: Date.now(),
-    from: 'notification'
-  };
-  localStorage.setItem('notificationHighlight', JSON.stringify(highlightData));
-  
-  // Clear any existing timeout
-  if (notificationTimeoutRef.current) {
-    clearTimeout(notificationTimeoutRef.current);
-  }
-  
-  // Fetch posts (this will send the highlight to backend)
-  fetchPosts(true);
-  
-  // Clean up after 15 seconds
-  notificationTimeoutRef.current = setTimeout(() => {
-    localStorage.removeItem('notificationHighlight');
-    notificationTimeoutRef.current = null;
-  }, 15000);
-};
-
-  const handleStorageChange = (e) => {
-    if (e.key === 'searchHighlightedPost' && e.newValue) {
-      const now = Date.now();
-      if (now - lastHighlightTimeRef.current > 1000) {
-        console.log("📡 [Feed] Storage event detected!");
-        handleFeedHighlight();
-      }
-    }
-  };
-
-  window.addEventListener('feedHighlight', handleFeedHighlight);
-  window.addEventListener('notificationHighlight', handleNotificationHighlight); // ADD THIS LINE
-  window.addEventListener('storage', handleStorageChange);
-
-  window.triggerFeedHighlight = () => {
-    console.log("🎯 [Feed] Global triggerFeedHighlight() called");
-    handleFeedHighlight();
-  };
-
-  window.refreshFeedPosts = () => {
-    console.log("🔄 [Feed] Global refreshFeedPosts() called");
-    setRefreshTrigger(prev => prev + 1);
-  };
-
-  return () => {
-    window.removeEventListener('feedHighlight', handleFeedHighlight);
-    window.removeEventListener('notificationHighlight', handleNotificationHighlight); // ADD THIS LINE
-    window.removeEventListener('storage', handleStorageChange);
-    
-    delete window.triggerFeedHighlight;
-    delete window.refreshFeedPosts;
-    
-    if (highlightTimeoutRef.current) {
-      clearTimeout(highlightTimeoutRef.current);
-    }
-    
-    // Clean up notification timeout too
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-    }
-  };
-}, []);
-
-// Find the scrollAndHighlightPost function and UPDATE it:
-
-const scrollAndHighlightPost = useCallback((postId, fromNotification = false) => {
-  if (!postId || isProcessingRef.current) {
-    console.log("⏭️ [Feed] No post ID or already processing");
-    return;
-  }
-  
-  console.log("🎯 [Feed] Attempting to scroll and highlight post:", postId);
-  
-  isProcessingRef.current = true;
-  const elementId = `post-${postId}`;
-  
-  if (highlightTimeoutRef.current) {
-    clearTimeout(highlightTimeoutRef.current);
-  }
-  
-  highlightTimeoutRef.current = setTimeout(() => {
-    const element = document.getElementById(elementId);
-    console.log("🔍 [Feed] Element found?", !!element);
-    
-    if (element) {
-      console.log("✅ [Feed] Found element! Scrolling and highlighting...");
-      
-      // Use the new highlight function
-      highlightElement(element, fromNotification);
-      
-      // Keep your existing cleanup logic
-      isProcessingRef.current = false;
-      hasCheckedHighlightRef.current = true;
-      console.log("✅ [Feed] Highlight complete");
-      
-      return;
-    }
-    
-    console.log("⏳ [Feed] Element not found, retrying...");
-    highlightTimeoutRef.current = setTimeout(() => {
-      const retryElement = document.getElementById(elementId);
-      if (retryElement) {
-        console.log("✅ [Feed] Found element on retry!");
-        
-        // Use the new highlight function
-        highlightElement(retryElement, fromNotification);
-        
-        isProcessingRef.current = false;
-        hasCheckedHighlightRef.current = true;
-        console.log("✅ [Feed] Highlight complete on retry");
-      } else {
-        console.log("❌ [Feed] Element not found after retry");
-        isProcessingRef.current = false;
-      }
-    }, 500);
-  }, 300);
-}, [setIsProcessingHighlight]);
-
-const fetchPosts = useCallback(async (forceHighlight = false) => {
-  if (isProcessingRef.current && !forceHighlight) {
-    console.log("⏸️ [Feed] Already processing, skipping fetch");
-    return;
-  }
-  
-  try {
-    isProcessingRef.current = true;
-    const token = localStorage.getItem('token');
-    
-    // ============ CHECK FOR ALL TYPES OF HIGHLIGHTS ============
-    let queryParams = '';
-    
-    // 1. Check for NOTIFICATION highlight
-    const notificationHighlight = localStorage.getItem('notificationHighlight');
-    // 2. Check for SEARCH highlight
-    const searchHighlight = localStorage.getItem('searchHighlightedPost');
-    
-    // Prioritize notification highlight (most recent), then search highlight
-    let highlightData = null;
-    let highlightType = null;
-    
-    if (notificationHighlight) {
-      try {
-        const parsed = JSON.parse(notificationHighlight);
-        // Check if highlight is still valid (less than 15 seconds old)
-        if (Date.now() - parsed.timestamp < 15000) {
-          highlightData = parsed;
-          highlightType = 'notification';
-        } else {
-          // Remove expired highlight
-          localStorage.removeItem('notificationHighlight');
-        }
-      } catch (error) {
-        console.error("❌ [Feed] Error parsing notification highlight:", error);
-        localStorage.removeItem('notificationHighlight');
-      }
-    }
-    
-    if (!highlightData && searchHighlight) {
-      try {
-        const parsed = JSON.parse(searchHighlight);
-        // Check if highlight is still valid (less than 15 seconds old)
-        if (Date.now() - parsed.timestamp < 15000) {
-          highlightData = parsed;
-          highlightType = 'search';
-        } else {
-          // Remove expired highlight
-          localStorage.removeItem('searchHighlightedPost');
-        }
-      } catch (error) {
-        console.error("❌ [Feed] Error parsing search highlight:", error);
-        localStorage.removeItem('searchHighlightedPost');
-      }
-    }
-    
-    // Send highlight to backend if we have one
-    if (highlightData) {
-      queryParams = `?highlight=${encodeURIComponent(JSON.stringify({
-        postId: highlightData.postId,
-        timestamp: highlightData.timestamp,
-        type: highlightType,
-        source: highlightData.from || highlightData.searchQuery || 'unknown'
-      }))}`;
-      console.log(`🎯 [Feed] Sending ${highlightType} highlight to backend`);
-    }
-    
-    // ============ FETCH WITH QUERY PARAM ============
-    const response = await fetch(`http://localhost:5000/api/posts${queryParams}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+    element.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'center'
     });
     
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate("/");
-      return;
+    element.classList.add('notification-highlighted');
+    
+    notificationTimeoutRef.current = setTimeout(() => {
+      element.classList.remove('notification-highlighted');
+      notificationHighlightRef.current = null;
+    }, 15000);
+    
+    if (scrollObserverRef.current) {
+      scrollObserverRef.current.disconnect();
     }
+    
+    scrollObserverRef.current = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting && element.classList.contains('notification-highlighted')) {
+          element.classList.remove('notification-highlighted');
+          scrollObserverRef.current?.disconnect();
+        }
+      });
+    }, { threshold: 0.1 });
+    
+    scrollObserverRef.current.observe(element);
+    
+    setTimeout(() => {
+      scrollObserverRef.current?.disconnect();
+    }, 15000);
+  };
 
-    const data = await response.json();
-    console.log("📝 [Feed] Fetched", data.length, "posts");
+  // Scroll and highlight post
+  const scrollAndHighlightPost = useCallback((postId, fromNotification = false) => {
+    if (!postId || isProcessingRef.current) return;
     
-    // Check for pinned post
-    const pinnedPost = data.find(post => post.isPinned);
-    if (pinnedPost) {
-      console.log("🎯 [Feed] Found pinned post at index:", data.indexOf(pinnedPost));
-      console.log("🎯 [Feed] Pinned post ID:", pinnedPost._id);
-      console.log("🎯 [Feed] Pinned from:", pinnedPost.pinnedFromNotification ? 'notification' : 'search');
+    isProcessingRef.current = true;
+    const elementId = `post-${postId}`;
+    
+    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+    
+    highlightTimeoutRef.current = setTimeout(() => {
+      const element = document.getElementById(elementId);
       
-      // Highlight the pinned post
-      setHighlightedPostId(pinnedPost._id);
-      
-      setTimeout(() => {
-        scrollAndHighlightPost(pinnedPost._id, true);
-      }, 300);
-      
-      // Clear the highlight after processing
-      if (highlightType === 'notification') {
-        localStorage.removeItem('notificationHighlight');
-      } else if (highlightType === 'search') {
-        localStorage.removeItem('searchHighlightedPost');
-        sessionStorage.removeItem('highlightedPostId');
+      if (element) {
+        highlightElement(element, fromNotification);
+        isProcessingRef.current = false;
+        hasCheckedHighlightRef.current = true;
+        return;
       }
+      
+      highlightTimeoutRef.current = setTimeout(() => {
+        const retryElement = document.getElementById(elementId);
+        if (retryElement) {
+          highlightElement(retryElement, fromNotification);
+          isProcessingRef.current = false;
+          hasCheckedHighlightRef.current = true;
+        } else {
+          isProcessingRef.current = false;
+        }
+      }, 500);
+    }, 300);
+  }, [setIsProcessingHighlight]);
+
+  // Fetch posts
+  const fetchPosts = useCallback(async (forceHighlight = false) => {
+    if (isProcessingRef.current && !forceHighlight) return;
+    
+    try {
+      isProcessingRef.current = true;
+      const token = localStorage.getItem('token');
+      
+      let queryParams = '';
+      let highlightData = null;
+      let highlightType = null;
+      
+      // Check notification highlight
+      const notificationHighlight = localStorage.getItem('notificationHighlight');
+      // Check search highlight
+      const searchHighlight = localStorage.getItem('searchHighlightedPost');
+      
+      if (notificationHighlight) {
+        try {
+          const parsed = JSON.parse(notificationHighlight);
+          if (Date.now() - parsed.timestamp < 15000) {
+            highlightData = parsed;
+            highlightType = 'notification';
+          } else {
+            localStorage.removeItem('notificationHighlight');
+          }
+        } catch (error) {
+          localStorage.removeItem('notificationHighlight');
+        }
+      }
+      
+      if (!highlightData && searchHighlight) {
+        try {
+          const parsed = JSON.parse(searchHighlight);
+          if (Date.now() - parsed.timestamp < 15000) {
+            highlightData = parsed;
+            highlightType = 'search';
+          } else {
+            localStorage.removeItem('searchHighlightedPost');
+          }
+        } catch (error) {
+          localStorage.removeItem('searchHighlightedPost');
+        }
+      }
+      
+      // Send highlight to backend if we have one
+      if (highlightData) {
+        queryParams = `?highlight=${encodeURIComponent(JSON.stringify({
+          postId: highlightData.postId,
+          timestamp: highlightData.timestamp,
+          type: highlightType,
+          source: highlightData.from || highlightData.searchQuery || 'unknown'
+        }))}`;
+      }
+      
+      const response = await fetch(`http://localhost:5000/api/posts${queryParams}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate("/");
+        return;
+      }
+
+      const data = await response.json();
+      
+      // Check for pinned post
+      const pinnedPost = data.find(post => post.isPinned);
+      if (pinnedPost) {
+        setHighlightedPostId(pinnedPost._id);
+        
+        setTimeout(() => {
+          scrollAndHighlightPost(pinnedPost._id, true);
+        }, 300);
+        
+        if (highlightType === 'notification') {
+          localStorage.removeItem('notificationHighlight');
+        } else if (highlightType === 'search') {
+          localStorage.removeItem('searchHighlightedPost');
+          sessionStorage.removeItem('highlightedPostId');
+        }
+      }
+      
+      setPosts(data);
+      isProcessingRef.current = false;
+      
+    } catch (error) {
+      setError('Failed to fetch posts');
+      console.error('Error fetching posts:', error);
+      isProcessingRef.current = false;
     }
-    
-    setPosts(data);
-    isProcessingRef.current = false;
-    
-  } catch (error) {
-    setError('Failed to fetch posts');
-    console.error('Error fetching posts:', error);
-    isProcessingRef.current = false;
-  }
-}, [navigate, scrollAndHighlightPost, setError, setPosts, setHighlightedPostId]);
+  }, [navigate, scrollAndHighlightPost, setError, setPosts, setHighlightedPostId]);
 
   // Fetch all users for PostModal
   const fetchAllUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
       if (response.ok) {
@@ -963,11 +886,10 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     }
   }, []);
   
-  // ==================== SHARE FUNCTIONS - UPDATED ====================
+  // ==================== SHARE FUNCTIONS ====================
 
   // Open share modal for a post
   const openShareModal = async (post) => {
-    // UPDATED: Don't check restriction for sharing - allow all users to share
     console.log("📤 Opening share modal for post:", post._id);
     
     setPostToShare(post);
@@ -980,31 +902,23 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     try {
       const token = localStorage.getItem('token');
       
-      // Fetch user's connections
       const response = await fetch('http://localhost:5000/api/network/connections', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
       if (response.ok) {
         const data = await response.json();
-        console.log("🔗 Connections fetched:", data);
         const connectionsList = data.connections || data || [];
-        console.log("🔗 Connections list:", connectionsList);
         setConnections(connectionsList);
       } else {
         const errorData = await response.json();
-        console.error("Failed to fetch connections:", errorData);
         setError("Failed to load connections: " + (errorData.message || "Unknown error"));
       }
       
       // Fetch post share count
       try {
         const shareResponse = await fetch(`http://localhost:5000/api/posts/${post._id}/shares`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (shareResponse.ok) {
@@ -1019,9 +933,7 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
       }
       
       setShowShareModal(true);
-      console.log("✅ Share modal opened");
     } catch (error) {
-      console.error("Error opening share modal:", error);
       setError("Failed to load connections: " + error.message);
     } finally {
       setShareLoading(false);
@@ -1030,7 +942,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
 
   // Close share modal
   const closeShareModal = () => {
-    console.log("📤 Closing share modal");
     setShowShareModal(false);
     setPostToShare(null);
     setSelectedConnections([]);
@@ -1072,13 +983,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     try {
       const token = localStorage.getItem('token');
       
-      // Log the data being sent
-      console.log("📤 Sharing post data:", {
-        postId: postToShare._id,
-        connectionIds: selectedConnections,
-        message: shareMessage
-      });
-      
       const response = await fetch(`http://localhost:5000/api/posts/${postToShare._id}/share`, {
         method: 'POST',
         headers: {
@@ -1092,18 +996,15 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
       });
 
       const data = await response.json();
-      console.log("📥 Share response:", data);
       
       if (response.ok) {
         setSuccess(`✅ Post shared with ${selectedConnections.length} connection(s)!`);
         
-        // Update share count in local state
         setShareCounts(prev => ({
           ...prev,
           [postToShare._id]: (prev[postToShare._id] || 0) + selectedConnections.length
         }));
 
-        // Refresh posts to update share count
         fetchPosts();
         
         closeShareModal();
@@ -1112,7 +1013,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
         setError(data.message || 'Failed to share post. Please try again.');
       }
     } catch (error) {
-      console.error("❌ Share error:", error);
       setError('Network error: Unable to share post. Please check your connection.');
     } finally {
       setShareLoading(false);
@@ -1137,8 +1037,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
 
   // Main initialization effect
   useEffect(() => {
-    console.log("🔍 [Feed] Component mounted or refreshTrigger changed", { refreshTrigger });
-    
     const userData = localStorage.getItem('user');
     const token = localStorage.getItem('token');
     
@@ -1150,7 +1048,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     const userObj = JSON.parse(userData);
     setUser(userObj);
     
-    // Only fetch user restriction data if needed
     if (userObj.status === 'restricted') {
       fetchUserWithRestriction();
     }
@@ -1188,9 +1085,7 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     }
 
     return () => {
-      if (socket) {
-        socket.off("new_notification");
-      }
+      if (socket) socket.off("new_notification");
     };
   }, [navigate, refreshTrigger, fetchPosts, fetchAllUsers, fetchUserWithRestriction]);
 
@@ -1200,15 +1095,12 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     const highlightId = params.get('highlight');
     
     if (highlightId && !hasCheckedHighlightRef.current) {
-      console.log("🔗 [Feed] Found highlight ID in URL:", highlightId);
-      
       const highlightData = {
         postId: highlightId,
         timestamp: Date.now(),
         from: 'url'
       };
       localStorage.setItem('searchHighlightedPost', JSON.stringify(highlightData));
-      
       fetchPosts(true);
     }
   }, [location, fetchPosts]);
@@ -1216,15 +1108,10 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
   // Handle scroll when posts are set
   useEffect(() => {
     if (highlightedPostId && posts.length > 0 && isProcessingHighlight) {
-      console.log("🔄 [Feed] Posts updated, attempting to highlight:", highlightedPostId);
-      
       const isAtTop = posts[0]?._id === highlightedPostId;
-      console.log("📊 [Feed] Is highlighted post at top?", isAtTop ? "✅ YES" : "❌ NO");
       
       if (isAtTop) {
-        if (highlightTimeoutRef.current) {
-          clearTimeout(highlightTimeoutRef.current);
-        }
+        if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
         
         highlightTimeoutRef.current = setTimeout(() => {
           scrollAndHighlightPost(highlightedPostId);
@@ -1233,13 +1120,12 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     }
   }, [posts, highlightedPostId, isProcessingHighlight, scrollAndHighlightPost]);
 
-    // ADD THE CLEANUP EFFECT HERE:
+  // Cleanup effect
   useEffect(() => {
     return () => {
       localStorage.removeItem('notificationHighlight');
       localStorage.removeItem('searchHighlightedPost');
       sessionStorage.removeItem('highlightedPostId');
-
     };
   }, []);
 
@@ -1327,17 +1213,10 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
 
   // ==================== POST CREATION ====================
   const handleCreatePost = async () => {
-    // UPDATED: Only check restriction if user has explicit restriction data
     if (user?.status === 'restricted') {
       if (handleRestrictedAction()) return;
     }
 
-    console.log("🚀 [Feed] Post button clicked!");
-    console.log("📝 Post content:", newPost);
-    console.log("📋 Post type:", postType);
-    console.log("📁 Selected files:", selectedFiles.length);
-    console.log("👤 User:", user?.name);
-    
     let postData = { content: newPost.trim() };
     
     if (postType === 'event') {
@@ -1392,15 +1271,10 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
 
     try {
       const token = localStorage.getItem('token');
-      console.log("🔑 Token exists:", !!token);
-      console.log("📦 Post data to send:", JSON.stringify(postData, null, 2));
-      
       let response;
       let result;
       
       if (selectedFiles.length > 0) {
-        console.log("📤 Uploading post with media...");
-        
         const formData = new FormData();
         formData.append('content', postData.content);
         formData.append('type', postType);
@@ -1415,22 +1289,14 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
           formData.append('media', file);
         });
 
-        console.log("📦 FormData created, sending to server...");
-        
         response = await fetch('http://localhost:5000/api/posts/upload', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
+          headers: { 'Authorization': `Bearer ${token}` },
           body: formData
         });
 
         result = await response.json();
-        console.log("📡 Media upload response:", result);
       } else {
-        console.log("📝 Creating post without media...");
-        console.log("📦 Post data:", JSON.stringify(postData, null, 2));
-        
         response = await fetch('http://localhost:5000/api/posts', {
           method: 'POST',
           headers: {
@@ -1441,20 +1307,14 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
         });
 
         result = await response.json();
-        console.log("📡 Post response:", result);
       }
-
-      console.log("✅ Response status:", response.status);
-      console.log("✅ Response data:", result);
       
       if (response.ok) {
         handlePostSuccess(result);
       } else {
-        console.error("❌ Post creation failed:", result);
         setError(result.message || 'Failed to create post. Please try again.');
       }
     } catch (error) {
-      console.error('❌ Create post error:', error);
       setError('Network error: ' + error.message);
     } finally {
       setLoading(false);
@@ -1487,18 +1347,13 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     setPostType('text');
     
     const newPostData = data.post || data;
-    console.log("🎉 New post data to add:", newPostData);
-    
     setPosts(prevPosts => [newPostData, ...prevPosts]);
     setSuccess('✅ Post created successfully!');
     setTimeout(() => setSuccess(""), 3000);
-    
-    console.log("🔄 Posts updated, new post count:", posts.length + 1);
   };
 
   // ==================== POST INTERACTIONS ====================
   const handleEventRSVP = async (postId, status) => {
-    // UPDATED: Only check restriction if user has explicit restriction data
     if (user?.status === 'restricted') {
       if (handleRestrictedAction()) return;
     }
@@ -1538,7 +1393,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
   };
 
   const handlePollVote = async (postId, optionIndex) => {
-    // UPDATED: Only check restriction if user has explicit restriction data
     if (user?.status === 'restricted') {
       if (handleRestrictedAction()) return;
     }
@@ -1578,7 +1432,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
   };
 
   const handleLike = async (postId) => {
-    // UPDATED: Only check restriction if user has explicit restriction data
     if (user?.status === 'restricted') {
       if (handleRestrictedAction()) return;
     }
@@ -1601,7 +1454,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
             post._id === postId ? updatedPost : post
           )
         );
-        // Update selectedPost if modal is open
         if (selectedPost && selectedPost._id === postId) {
           setSelectedPost(updatedPost);
         }
@@ -1612,7 +1464,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
   };
 
   const handleAddComment = async (postId, commentText) => {
-    // UPDATED: Only check restriction if user has explicit restriction data
     if (user?.status === 'restricted') {
       if (handleRestrictedAction()) return;
     }
@@ -1642,7 +1493,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
           )
         );
         
-        // Update selectedPost if modal is open
         if (selectedPost && selectedPost._id === postId) {
           setSelectedPost(data.post);
         }
@@ -1652,7 +1502,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
         return data.post;
       }
     } catch (error) {
-      // Silent catch
       return null;
     } finally {
       setCommentLoading(prev => ({ ...prev, [postId]: false }));
@@ -1712,8 +1561,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
     try {
       const token = localStorage.getItem('token');
       
-      console.log("Deleting comment:", { postId, commentId });
-      
       const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
@@ -1723,7 +1570,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Comment deleted successfully:", data);
         
         setPosts(prevPosts => 
           prevPosts.map(post => 
@@ -1740,12 +1586,10 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
         return data.post;
       } else {
         const errorData = await response.json();
-        console.error("Delete comment failed:", errorData);
         setError(errorData.message || 'Failed to delete comment');
         return null;
       }
     } catch (error) {
-      console.error("Error deleting comment:", error);
       setError('Failed to delete comment');
       return null;
     }
@@ -1945,7 +1789,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
 
   // Manual refresh function
   const handleManualRefresh = () => {
-    console.log("🔄 [Feed] Manual refresh triggered");
     hasCheckedHighlightRef.current = false;
     setIsProcessingHighlight(false);
     setRefreshTrigger(prev => prev + 1);
@@ -2091,51 +1934,6 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
       <ImageCarousel images={images} videos={videos} />
     );
   };
- // ==================== HIGHLIGHT HELPER FUNCTION ====================
-  const highlightElement = (element, fromNotification = false) => {
-    console.log("✨ [Feed] Highlighting element:", element.id);
-    
-    if (!element) return;
-    
-    // Scroll to element
-    element.scrollIntoView({ 
-      behavior: 'smooth', 
-      block: 'center'
-    });
-    
-    // Add highlight class
-    element.classList.add('notification-highlighted');
-    
-    // Remove highlight after 15 seconds
-    notificationTimeoutRef.current = setTimeout(() => {
-      element.classList.remove('notification-highlighted');
-      notificationHighlightRef.current = null;
-      console.log("✅ [Feed] Highlight removed after 15 seconds");
-    }, 15000);
-    
-    // Also remove highlight if user scrolls away
-    if (scrollObserverRef.current) {
-      scrollObserverRef.current.disconnect();
-    }
-    
-    scrollObserverRef.current = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting && element.classList.contains('notification-highlighted')) {
-          element.classList.remove('notification-highlighted');
-          scrollObserverRef.current?.disconnect();
-          console.log("↕️ [Feed] Highlight removed due to scrolling away");
-        }
-      });
-    }, { threshold: 0.1 });
-    
-    scrollObserverRef.current.observe(element);
-    
-    // Clean up observer after highlight timeout
-    setTimeout(() => {
-      scrollObserverRef.current?.disconnect();
-    }, 15000);
-  };
-
 
   if (!user) {
     return (
@@ -2146,35 +1944,61 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
   }
 
   return (
-    <div className="feed-container">
+    <div className="feed-layout">
       {/* Header */}
-      <header className="feed-header">
+      <header className="feed-header-bar">
         <div className="header-left">
-          <div className="logo" onClick={() => navigate("/feed")}>💼 Swish</div>
+          <div className="logo" onClick={() => navigate("/feed")}>
+            <span className="logo-icon">💼</span>
+            <span className="logo-text">Swish</span>
+          </div>
           
           {/* SEARCH BAR */}
           <div className="feed-search-wrapper">
-             <ExploreSearch onUserSelect={handleUserSelectFromSearch} />
+            <ExploreSearch onUserSelect={handleUserSelectFromSearch} />
           </div>
 
           <div className="nav-items">
-            <button className="nav-btn active">🏠 Feed</button>
-            <button className="nav-btn" onClick={() => navigate("/profile")}>👤 Profile</button>
-            <button className="nav-btn" onClick={() => navigate("/network")}>👥 Network</button>
-            <button className="nav-btn" onClick={() => navigate("/Explore")}>🔥 Explore</button>
+            <button className="nav-btn active">
+              <span className="nav-icon">🏠</span>
+              <span className="nav-text">Feed</span>
+            </button>
+            <button className="nav-btn" onClick={() => navigate("/profile")}>
+              <span className="nav-icon">👤</span>
+              <span className="nav-text">Profile</span>
+            </button>
+            <button className="nav-btn" onClick={() => navigate("/network")}>
+              <span className="nav-icon">👥</span>
+              <span className="nav-text">Network</span>
+            </button>
+            <button className="nav-btn" onClick={() => navigate("/Explore")}>
+              <span className="nav-icon">🔥</span>
+              <span className="nav-text">Explore</span>
+            </button>
             <button 
-              className={`nav-btn notification-bell-btn ${showNotifications ? 'active-bell' : ''}`}
+              className={`nav-btn notification-bell-btn`}
               onClick={handleClickNotification}
               title="Notifications"
             >
-              🔔 Notifications
+              <span className="nav-icon">🔔</span>
+              <span className="nav-text">Notifications</span>
               {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
             </button>
           </div>
         </div>
+        
         <div className="header-right">
+          {user.role === 'admin' && (
+            <button 
+              className="admin-btn"
+              onClick={() => navigate("/admin")}
+            >
+              <span className="admin-icon">👑</span>
+              <span>Admin</span>
+            </button>
+          )}
+          
           <div className="user-info">
-            <span className="user-name">Welcome, {user.name}</span>
             <div 
               className="user-avatar" 
               title="View Profile"
@@ -2184,33 +2008,10 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
             </div>
           </div>
           
-          {user.role === 'admin' && (
-            <button 
-              className="admin-btn"
-              onClick={() => navigate("/admin")}
-              style={{
-                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-                marginRight: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-              onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
-            >
-              👑 Admin
-            </button>
-          )}
-          
-          <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
+          <button className="logout-btn" onClick={handleLogout}>
+            <span className="logout-icon">🚪</span>
+            <span>Logout</span>
+          </button>
         </div>
       </header>
 
@@ -2228,48 +2029,68 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
         </div>
       )}
 
-      {/* Notification Panel */}
-      {showNotifications && (
-        <div className="notification-panel-overlay" onClick={() => setShowNotifications(false)}>
-          <div className="notification-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="panel-header">
-              <h3>Notifications</h3>
-              <button onClick={() => setShowNotifications(false)} className="close-panel-btn">×</button>
+      <div className="feed-layout-container">
+        {/* ========== ENHANCED LEFT SIDEBAR ========== */}
+        <div className="sidebar left-sidebar">
+          <div className="profile-mini-card" onClick={() => navigate("/profile")}>
+            <div className="mini-avatar">
+              {getUserAvatar(user)}
             </div>
-            <div className="panel-content">
-              <p className="empty-message">You have no new notifications to display (Placeholder).</p>
-              <p>The badge has been reset. You can now fetch your notification list here.</p>
-              <button 
-                onClick={() => { setShowNotifications(false); navigate("/notifications"); }}
-                className="view-all-notifs-btn"
-              >
-                View Full Notification Page
+            <div className="mini-info">
+              <h4>{user?.name || "User"}</h4>
+              <p className="mini-title">
+                {user?.role === 'student' ? `🎓 ${user?.department || 'Student'}` : 
+                 user?.role === 'faculty' ? `👨‍🏫 ${user?.department || 'Faculty'}` : 
+                 user?.role === 'admin' ? '👑 Administrator' : '👤 Member'}
+              </p>
+              <p className="mini-bio">
+                {user?.bio?.slice(0, 80) || "Welcome to Swish! Connect with your college community."}
+              </p>
+            </div>
+            <div className="mini-stats">
+              <div className="stats-grid">
+                <div className="stat-item">
+                  <span className="stat-number">{posts.filter(p => p.user?.id === user.id).length}</span>
+                  <span className="stat-label">Posts</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">{posts.reduce((acc, post) => acc + (post.likes?.length || 0), 0)}</span>
+                  <span className="stat-label">Likes</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="quick-actions-card">
+            <h3 className="sidebar-title">
+              <span>⚡ Quick Actions</span>
+            </h3>
+            <div className="quick-actions-grid">
+              <button className="quick-action-btn" onClick={() => document.querySelector('.post-input-section input')?.focus()}>
+                <span className="action-icon">✏️</span>
+                <span>Create Post</span>
+              </button>
+              <button className="quick-action-btn" onClick={() => navigate("/explore")}>
+                <span className="action-icon">🔍</span>
+                <span>Find People</span>
+              </button>
+              <button className="quick-action-btn" onClick={() => navigate("/network")}>
+                <span className="action-icon">👥</span>
+                <span>My Network</span>
+              </button>
+              <button className="quick-action-btn" onClick={() => navigate("/explore?tab=events")}>
+                <span className="action-icon">📅</span>
+                <span>Events</span>
               </button>
             </div>
           </div>
+
+          
         </div>
-      )}
 
-      <div className="feed-content">
-        <div className="main-feed">
-          {/* User Welcome Card */}
-          <div className="welcome-card">
-            <div className="welcome-content">
-              <div className="welcome-avatar">
-                {getUserAvatar(user)}
-              </div>
-              <div className="welcome-text">
-                <h2>Hello, {user.name}! 👋</h2>
-                <p>Share your thoughts with the campus community...</p>
-              </div>
-            </div>
-            <div className="user-role-badge">
-              {user.role === 'student' && '🎓 Student'}
-              {user.role === 'faculty' && '👨‍🏫 Faculty'}
-              {user.role === 'admin' && '👑 Admin'}
-            </div>
-          </div>
-
+        {/* ========== MAIN CONTENT: FEED ========== */}
+        <div className="main-content feed-main">
           {/* Create Post Card */}
           <div className="create-post-card">
             <div className="post-input-section">
@@ -2480,9 +2301,9 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
                     onClick={toggleMediaUploader}
                     disabled={isUploading}
                     style={{ 
-                      backgroundColor: showMediaUploader ? '#f1f5f9' : 'transparent',
-                      color: showMediaUploader ? '#4f46e5' : '#64748b',
-                      border: '1px solid #e2e8f0',
+                      backgroundColor: showMediaUploader ? 'rgba(167, 139, 250, 0.1)' : 'transparent',
+                      color: showMediaUploader ? '#c4b5fd' : '#9ca3af',
+                      border: '1px solid #374151',
                       padding: '8px 12px',
                       borderRadius: '6px',
                       cursor: 'pointer',
@@ -2503,9 +2324,9 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
                   onClick={() => setPostType(postType === 'event' ? 'text' : 'event')}
                   disabled={isUploading}
                   style={{ 
-                    backgroundColor: postType === 'event' ? '#f1f5f9' : 'transparent',
-                    color: postType === 'event' ? '#4f46e5' : '#64748b',
-                    border: '1px solid #e2e8f0',
+                    backgroundColor: postType === 'event' ? 'rgba(167, 139, 250, 0.1)' : 'transparent',
+                    color: postType === 'event' ? '#c4b5fd' : '#9ca3af',
+                    border: '1px solid #374151',
                     padding: '8px 12px',
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -2525,9 +2346,9 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
                   onClick={() => setPostType(postType === 'poll' ? 'text' : 'poll')}
                   disabled={isUploading}
                   style={{ 
-                    backgroundColor: postType === 'poll' ? '#f1f5f9' : 'transparent',
-                    color: postType === 'poll' ? '#4f46e5' : '#64748b',
-                    border: '1px solid #e2e8f0',
+                    backgroundColor: postType === 'poll' ? 'rgba(167, 139, 250, 0.1)' : 'transparent',
+                    color: postType === 'poll' ? '#c4b5fd' : '#9ca3af',
+                    border: '1px solid #374151',
                     padding: '8px 12px',
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -2581,13 +2402,14 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
           {/* Posts Feed */}
           <div className="posts-container">
             {posts.length === 0 ? (
-              <div className="empty-state">
+              <div className="notifications-empty">
                 <div className="empty-icon">📝</div>
                 <h3>No posts yet</h3>
                 <p>Be the first to share something with your campus community!</p>
                 <button 
-                  className="create-first-post-btn"
+                  className="feature-btn"
                   onClick={() => document.querySelector('.post-input-section input')?.focus()}
+                  style={{ marginTop: '20px' }}
                 >
                   Create Your First Post
                 </button>
@@ -2603,23 +2425,15 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
                   <div 
                     key={post._id} 
                     id={`post-${post._id}`}
-                    className={`post-card ${isHighlighted ? 'highlighted-post' : ''}`}
-                    style={isHighlighted ? {
-                      border: '3px solid #007bff',
-                      backgroundColor: '#f0f8ff',
-                      boxShadow: '0 0 15px rgba(0, 123, 255, 0.2)',
-                      position: 'relative',
-                      marginBottom: '25px',
-                      transition: 'all 0.3s ease'
-                    } : {}}
+                    className={`post-card ${isHighlighted ? 'notification-highlighted' : ''}`}
                   >
                     {isHighlighted && (
                       <div className="highlight-badge" style={{
                         position: 'absolute',
                         top: '15px',
                         right: '15px',
-                        background: '#007bff',
-                        color: 'white',
+                        background: 'linear-gradient(135deg, var(--lavender), var(--royal-blue))',
+                        color: 'var(--black)',
                         padding: '6px 12px',
                         borderRadius: '20px',
                         fontSize: '12px',
@@ -2636,13 +2450,13 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
                     
                     <div className="post-header">
                       <div className="post-user">
-                        <div className="user-avatar">
+                        <div className="post-avatar">
                           {getUserAvatar(post.user)}
                         </div>
-                        <div className="user-info">
-                          <div className="user-name">
+                        <div className="post-user-info">
+                          <div className="post-user-name">
                             {post.user?.name || "Unknown User"}
-                             {post.user?.isPrivate && (
+                            {post.user?.isPrivate && (
                               <span className="private-badge" title="Private Account"> 🔒</span>
                             )}
                             {post.user?.role === 'faculty' && (
@@ -2791,81 +2605,55 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="sidebar">
-          {/* User Profile Card */}
-          <div className="sidebar-card user-profile-card">
-            <div className="profile-header">
-              <div className="profile-avatar">
-                {getUserAvatar(user)}
+        {/* ========== RIGHT SIDEBAR ========== */}
+        <div className="sidebar right-sidebar">
+          {/* Campus Stats */}
+          <div className="trending-card">
+            <h3 className="sidebar-title">
+              <span>📊 Campus Stats</span>
+            </h3>
+            
+            <div className="clean-network-stats">
+              <div className="clean-network-stat">
+                <span className="clean-stat-main">{posts.length}</span>
+                <span className="clean-stat-sub">Total Posts</span>
               </div>
-              <div className="profile-info">
-                <h3>{user.name}</h3>
-                <p className="profile-role">
-                  {user.role === 'student' && '🎓 Student'}
-                  {user.role === 'faculty' && '👨‍🏫 Faculty'}
-                  {user.role === 'admin' && '👑 Administrator'}
-                </p>
-                {user.department && (
-                  <p className="profile-department">{user.department}</p>
-                )}
-                <div className="profile-stats">
-                  <span>{posts.filter(p => p.user?.id === user.id).length} posts</span>
-                  <span>•</span>
-                  <span>{(posts.reduce((acc, post) => acc + (post.likes?.length || 0), 0))} likes</span>
-                </div>
+              <div className="clean-network-stat">
+                <span className="clean-stat-main">{new Set(posts.map(p => p.user?.id)).size}</span>
+                <span className="clean-stat-sub">Active Users</span>
               </div>
-            </div>
-            <button 
-              className="view-profile-btn"
-              onClick={() => navigate("/profile")}
-            >
-              👤 View Profile
-            </button>
-          </div>
-
-          <div className="sidebar-card">
-            <h3>📊 Campus Stats</h3>
-            <div className="stats">
-              <div className="stat">
-                <strong>{posts.length}</strong>
-                <span>Total Posts</span>
+              <div className="clean-network-stat">
+                <span className="clean-stat-main">{(posts.reduce((acc, post) => acc + (post.likes?.length || 0), 0))}</span>
+                <span className="clean-stat-sub">Total Likes</span>
               </div>
-              <div className="stat">
-                <strong>{new Set(posts.map(p => p.user?.id)).size}</strong>
-                <span>Active Users</span>
-              </div>
-              <div className="stat">
-                <strong>{(posts.reduce((acc, post) => acc + (post.likes?.length || 0), 0))}</strong>
-                <span>Total Likes</span>
-              </div>
-              <div className="stat">
-                <strong>{(posts.reduce((acc, post) => acc + (post.comments?.length || 0), 0))}</strong>
-                <span>Total Comments</span>
+              <div className="clean-network-stat">
+                <span className="clean-stat-main">{(posts.reduce((acc, post) => acc + (post.comments?.length || 0), 0))}</span>
+                <span className="clean-stat-sub">Total Comments</span>
               </div>
             </div>
           </div>
 
           {/* Upcoming Events Sidebar */}
           {posts.filter(post => post.type === 'event' && post.event).length > 0 && (
-            <div className="sidebar-card">
-              <h3>📅 Upcoming Events</h3>
-              <div className="upcoming-events">
+            <div className="trending-card">
+              <h3 className="sidebar-title">
+                <span>📅 Upcoming Events</span>
+              </h3>
+              
+              <div className="trending-list">
                 {posts
                   .filter(post => post.type === 'event' && post.event)
                   .slice(0, 3)
                   .map(post => {
                     const eventDate = new Date(post.event.dateTime);
                     return (
-                      <div key={post._id} className="upcoming-event">
-                        <div className="event-sidebar-header">
-                          <div className="event-sidebar-title">{post.event.title}</div>
-                          <div className="event-sidebar-date">
-                            {eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </div>
-                        </div>
-                        <div className="event-sidebar-time">
-                          {eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      <div key={post._id} className="trending-item" onClick={() => openPostModal(post)}>
+                        <div className="trending-info">
+                          <h4>{post.event.title}</h4>
+                          <p className="trending-meta">
+                            <span>📅 {eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            <span>👥 {post.event.rsvpCount || 0} going</span>
+                          </p>
                         </div>
                       </div>
                     );
@@ -2877,18 +2665,23 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
 
           {/* Active Polls Sidebar */}
           {posts.filter(post => post.type === 'poll' && post.poll).length > 0 && (
-            <div className="sidebar-card">
-              <h3>📊 Active Polls</h3>
-              <div className="active-polls">
+            <div className="suggestions-card">
+              <h3 className="sidebar-title">
+                <span>📊 Active Polls</span>
+              </h3>
+              
+              <div className="suggestions-list">
                 {posts
                   .filter(post => post.type === 'poll' && post.poll)
                   .slice(0, 3)
                   .map(post => (
-                    <div key={post._id} className="active-poll">
-                      <div className="poll-sidebar-title">{post.poll.question}</div>
-                      <div className="poll-sidebar-stats">
-                        <span>{post.poll.totalVotes || 0} votes</span>
-                        <span>{post.poll.options.length} options</span>
+                    <div key={post._id} className="suggestion-item" onClick={() => openPostModal(post)}>
+                      <div className="suggestion-info">
+                        <h4>{post.poll.question}</h4>
+                        <p className="suggestion-meta">
+                          <span>{post.poll.totalVotes || 0} votes</span>
+                          <span>{post.poll.options.length} options</span>
+                        </p>
                       </div>
                     </div>
                   ))
@@ -2965,158 +2758,156 @@ const fetchPosts = useCallback(async (forceHighlight = false) => {
         </div>
       )}
 
-      {/* Share - UPDATED WITH PROPER VISIBILITY AND CSS CLASSES */}
-        {showShareModal && postToShare && (
-          <div className="share-popup-overlay" onClick={closeShareModal}>
-            <div className="share-popup" onClick={(e) => e.stopPropagation()}>
-              <div className="share-popup-header">
-                <h3>Share Post</h3>
-                <button 
-                  className="close-share-btn" 
-                  onClick={closeShareModal}
-                  aria-label="Close share modal"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="share-content">
-                <div className="share-post-preview">
-                  <div className="share-post-header">
-                    <div className="share-post-user">
-                      <div className="share-post-avatar">
-                        {getUserAvatar(postToShare.user)}
+      {/* Share Modal */}
+      {showShareModal && postToShare && (
+        <div className="modal-overlay" onClick={closeShareModal}>
+          <div className="connection-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Share Post</h3>
+              <button 
+                className="close-share-btn" 
+                onClick={closeShareModal}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="share-content">
+              <div className="share-post-preview">
+                <div className="share-post-header">
+                  <div className="share-post-user">
+                    <div className="share-post-avatar">
+                      {getUserAvatar(postToShare.user)}
+                    </div>
+                    <div>
+                      <div className="share-post-username">
+                        {postToShare.user?.name || "Unknown User"}
                       </div>
-                      <div>
-                        <div className="share-post-username">
-                          {postToShare.user?.name || "Unknown User"}
-                        </div>
-                        <div className="share-post-time">
-                          {new Date(postToShare.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </div>
+                      <div className="share-post-time">
+                        {new Date(postToShare.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
                       </div>
                     </div>
-                    <div className="share-post-text">
-                      {postToShare.content.length > 150 
-                        ? postToShare.content.substring(0, 150) + '...'
-                        : postToShare.content}
-                    </div>
                   </div>
-                </div>
-                
-                <div className="share-message-section">
-                  <label>Add a message (optional):</label>
-                  <textarea
-                    placeholder="Say something about this post..."
-                    value={shareMessage}
-                    onChange={(e) => setShareMessage(e.target.value)}
-                    maxLength={200}
-                    rows={3}
-                  />
-                  <div className="char-count-share">
-                    {shareMessage.length}/200
-                  </div>
-                </div>
-                
-                <div className="share-connections-section">
-                  <div className="share-section-header">
-                    <h4>Share with Connections</h4>
-                    <div className="connections-search">
-                      <input
-                        type="text"
-                        placeholder="Search connections by name, department, or email..."
-                        value={searchConnections}
-                        onChange={(e) => setSearchConnections(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="select-all-connections">
-                    <label className="select-all-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedConnections.length === connections.length && connections.length > 0}
-                        onChange={selectAllConnections}
-                      />
-                      <span>Select All</span>
-                    </label>
-                    <span className="selected-count">
-                      {selectedConnections.length} selected
-                    </span>
-                  </div>
-                  
-                  <div className="connections-list">
-                    {shareLoading ? (
-                      <div className="loading-connections">
-                        Loading connections...
-                      </div>
-                    ) : filteredConnections.length > 0 ? (
-                      filteredConnections.map(conn => (
-                        <div 
-                          key={conn._id || conn.id} 
-                          className={`connection-item ${selectedConnections.includes(conn._id || conn.id) ? 'selected' : ''}`}
-                        >
-                          <label className="connection-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={selectedConnections.includes(conn._id || conn.id)}
-                              onChange={() => toggleConnectionSelect(conn._id || conn.id)}
-                            />
-                            <div className="connection-avatar">
-                              {conn.profilePhoto ? (
-                                <img 
-                                  src={conn.profilePhoto} 
-                                  alt={conn.name} 
-                                />
-                              ) : (
-                                <div className="avatar-placeholder">
-                                  {conn.name?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                              )}
-                            </div>
-                            <div className="connection-details">
-                              <div className="connection-name">
-                                {conn.name || 'Unknown User'}
-                              </div>
-                              <div className="connection-meta">
-                                {conn.department && <span>{conn.department}</span>}
-                                {conn.role && <span>{conn.role}</span>}
-                                {conn.email && <span className="connection-email">{conn.email}</span>}
-                              </div>
-                            </div>
-                          </label>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="no-connections">
-                        {searchConnections ? 'No connections match your search' : 'No connections found'}
-                      </div>
-                    )}
+                  <div className="share-post-text">
+                    {postToShare.content.length > 150 
+                      ? postToShare.content.substring(0, 150) + '...'
+                      : postToShare.content}
                   </div>
                 </div>
               </div>
               
-              <div className="share-popup-footer">
-                <button 
-                  className="cancel-share-btn" 
-                  onClick={closeShareModal}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="share-post-btn"
-                  onClick={handleSharePost}
-                  disabled={selectedConnections.length === 0 || shareLoading}
-                >
-                  {shareLoading ? 'Sharing...' : `Share with ${selectedConnections.length} connection(s)`}
-                </button>
+              <div className="share-message-section">
+                <label>Add a message (optional):</label>
+                <textarea
+                  placeholder="Say something about this post..."
+                  value={shareMessage}
+                  onChange={(e) => setShareMessage(e.target.value)}
+                  maxLength={200}
+                  rows={3}
+                />
+                <div className="char-count-share">
+                  {shareMessage.length}/200
+                </div>
+              </div>
+              
+              <div className="share-connections-section">
+                <div className="share-section-header">
+                  <h4>Share with Connections</h4>
+                  <div className="connections-search">
+                    <input
+                      type="text"
+                      placeholder="Search connections by name, department, or email..."
+                      value={searchConnections}
+                      onChange={(e) => setSearchConnections(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="select-all-connections">
+                  <label className="select-all-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedConnections.length === connections.length && connections.length > 0}
+                      onChange={selectAllConnections}
+                    />
+                    <span>Select All</span>
+                  </label>
+                  <span className="selected-count">
+                    {selectedConnections.length} selected
+                  </span>
+                </div>
+                
+                <div className="connections-list">
+                  {shareLoading ? (
+                    <div className="loading-connections">
+                      Loading connections...
+                    </div>
+                  ) : filteredConnections.length > 0 ? (
+                    filteredConnections.map(conn => (
+                      <div 
+                        key={conn._id || conn.id} 
+                        className={`connection-item ${selectedConnections.includes(conn._id || conn.id) ? 'selected' : ''}`}
+                      >
+                        <label className="connection-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={selectedConnections.includes(conn._id || conn.id)}
+                            onChange={() => toggleConnectionSelect(conn._id || conn.id)}
+                          />
+                          <div className="connection-avatar">
+                            {conn.profilePhoto ? (
+                              <img 
+                                src={conn.profilePhoto} 
+                                alt={conn.name} 
+                              />
+                            ) : (
+                              <div className="avatar-placeholder">
+                                {conn.name?.charAt(0).toUpperCase() || 'U'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="connection-details">
+                            <div className="connection-name">
+                              {conn.name || 'Unknown User'}
+                            </div>
+                            <div className="connection-meta">
+                              {conn.department && <span>{conn.department}</span>}
+                              {conn.role && <span>{conn.role}</span>}
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="no-connections">
+                      {searchConnections ? 'No connections match your search' : 'No connections found'}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>    
-        )}
+            
+            <div className="modal-actions">
+              <button 
+                className="modal-btn cancel" 
+                onClick={closeShareModal}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-btn confirm"
+                onClick={handleSharePost}
+                disabled={selectedConnections.length === 0 || shareLoading}
+              >
+                {shareLoading ? 'Sharing...' : `Share with ${selectedConnections.length} connection(s)`}
+              </button>
+            </div>
+          </div>
+        </div>    
+      )}
 
       {/* Post Modal */}
       {postModalOpen && selectedPost && (
