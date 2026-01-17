@@ -21,7 +21,8 @@ function Register() {
     designation: "",
     adminCode: "",
     isPrivate: false,
-    bio: ""
+    bio: "",
+    secretCode: "", 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -95,11 +96,11 @@ function Register() {
       return;
     }
 
-    if (formData.role === 'admin' && formData.adminCode !== "CAMPUS2024") {
-      setError("Invalid admin access code");
-      setLoading(false);
-      return;
-    }
+   if ((formData.role === 'admin' || formData.role === 'faculty') && !formData.secretCode) {
+  setError("Registration code is required for Admin/Faculty registration");
+  setLoading(false);
+  return;
+}
 
     try {
       const submitData = new FormData();
@@ -110,6 +111,8 @@ function Register() {
       submitData.append('role', formData.role);
       submitData.append('bio', formData.bio || "Campus community member");
       submitData.append('isPrivate', formData.isPrivate);
+
+      submitData.append('secretCode', formData.secretCode || '');
       
       if (formData.profilePhoto) {
         submitData.append('profilePhoto', formData.profilePhoto);
@@ -630,6 +633,19 @@ function Register() {
                   {/* FACULTY FIELDS */}
                   {formData.role === 'faculty' && (
                     <div className="form-grid">
+
+                      <div className="input-group full-width">
+                        <label>Campus Registration Code *</label>
+                        <input 
+                          type="password" 
+                          className="register-input" 
+                          placeholder="Enter Secret Code" 
+                          value={formData.secretCode}
+                          onChange={(e) => setFormData({...formData, secretCode: e.target.value})}
+                          required
+                        />
+                        <div className="input-hint">Contact campus admin for the registration code</div>
+                      </div>
                       <div className="input-group">
                         <label>Employee ID *</label>
                         <input 
@@ -687,6 +703,19 @@ function Register() {
                     <div className="admin-verification">
                       <div className="verification-note">
                         🔒 Administrative access requires special authorization
+                      </div>
+
+                      <div className="input-group">
+                        <label>Campus Registration Code *</label>
+                        <input 
+                          type="password" 
+                          className="register-input" 
+                          placeholder="Enter Secret Code" 
+                          value={formData.secretCode}
+                          onChange={(e) => setFormData({...formData, secretCode: e.target.value})}
+                          required
+                        />
+                        <div className="code-hint">Contact system administrator for the registration code</div>
                       </div>
                       <div className="input-group">
                         <label>Admin Access Code *</label>
