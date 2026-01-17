@@ -720,6 +720,9 @@
   resize: vertical;
   min-height: 60px;
   max-height: 150px;
+  white-space: pre-wrap;        /* ← Preserve line breaks while typing */
+  overflow-wrap: break-word;    /* ← Handle long words */
+  word-break: break-word; 
 }
 
 .post-input-section input:focus,
@@ -1146,6 +1149,8 @@
   color: var(--text-main);
   font-size: 15px;
   font-weight: 500;
+  white-space: pre-wrap;        /* ← ADD THIS LINE */
+  overflow-wrap: break-word;    /* ← ADD THIS LINE */
 }
 
 /* ========== EVENT CARD ========== */
@@ -1175,6 +1180,8 @@
   color: var(--text-dim);
   margin-bottom: 16px;
   line-height: 1.6;
+  white-space: pre-wrap;        /* ← ADD */
+  overflow-wrap: break-word;    /* ← ADD */
 }
 
 .event-details {
@@ -2424,5 +2431,75 @@
   
   .modal-btn {
     width: 100%;
+  }
+}
+/* Add to the existing .post-input-section textarea styles */
+.post-input-section textarea {
+  white-space: pre-wrap !important; /* Preserves line breaks */
+  overflow-wrap: break-word !important; /* Breaks long words */
+  word-break: break-word !important; /* Alternative for webkit */
+  min-height: 100px !important;
+  max-height: 300px !important;
+  resize: vertical !important;
+  font-family: inherit !important;
+  line-height: 1.6 !important;
+}
+
+/* For post content display */
+.post-content p {
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  line-height: 1.6 !important;
+}
+
+/* For event and poll descriptions */
+.event-description,
+.poll-option-text {
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+}
+/* ========== READ MORE STYLES ========== */
+.read-more-container {
+  width: 100%;
+}
+
+.post-text {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.6;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.read-more-btn {
+  color: var(--lavender);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: var(--transition);
+  display: inline-block;
+  background: none;
+  border: none;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.read-more-btn:hover {
+  background: rgba(167, 139, 250, 0.1);
+  text-decoration: underline;
+}
+
+/* For better mobile experience */
+@media (max-width: 768px) {
+  .read-more-btn {
+    display: inline-block;
+    padding: 4px 10px;
+    margin-top: 4px;
   }
 }

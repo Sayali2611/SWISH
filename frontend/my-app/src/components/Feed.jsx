@@ -505,6 +505,33 @@ const ImageCarousel = ({ images, videos }) => {
   );
 };
 
+// ==================== READ MORE COMPONENT ====================
+const ReadMore = ({ text, maxLength = 300 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (!text || text.length <= maxLength) {
+    return <p>{text}</p>;
+  }
+  
+  const displayText = isExpanded ? text : text.substring(0, maxLength) + '...';
+  
+  return (
+    <div className="read-more-container">
+      <p className="post-text">
+        {displayText}
+        {!isExpanded && (
+          <span 
+            className="read-more-btn"
+            onClick={() => setIsExpanded(true)}
+          >
+            Read more
+          </span>
+        )}
+      </p>
+    </div>
+  );
+};
+
 function Feed() {
   // Existing states
   const [postModalOpen, setPostModalOpen] = useState(false);
@@ -1217,7 +1244,12 @@ function Feed() {
       if (handleRestrictedAction()) return;
     }
 
-    let postData = { content: newPost.trim() };
+      let postData = { content: newPost };
+
+       if (postType === 'text' && !newPost.trim() && selectedFiles.length === 0) {
+    setError('Post content or media is required for text posts');
+    return;
+  }
     
     if (postType === 'event') {
       if (!eventData.title || !eventData.date || !eventData.time || !eventData.location) {
@@ -2098,19 +2130,31 @@ function Feed() {
               <div className="user-avatar-small">
                 {getUserAvatar(user)}
               </div>
-              <input 
-                type="text" 
-                placeholder={
-                  postType === 'text' ? "What's happening on campus? Share updates, events, or thoughts... 🎓" :
-                  postType === 'event' ? "Describe your event (optional)..." :
-                  "Ask a question for your poll (optional)..."
-                }
-                value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleCreatePost()}
-                maxLength={500}
-                disabled={isUploading}
-              />
+                <textarea  // ✅ CHANGE TO TEXTAREA
+                  placeholder="What's happening on campus? Share updates, events, or thoughts... 🎓"
+                  value={newPost}
+                  onChange={(e) => setNewPost(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Submit on Ctrl+Enter or Cmd+Enter
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                      handleCreatePost();
+                    }
+                  }}
+                  maxLength={2000}
+                  disabled={isUploading}
+                  rows={4} // Add this
+                  style={{
+                    resize: 'vertical',
+                    minHeight: '100px',
+                    fontFamily: 'inherit',
+                    fontSize: '16px',
+                    lineHeight: '1.5',
+                    whiteSpace: 'pre-wrap', // This preserves line breaks
+                    overflowWrap: 'break-word',
+                    padding: '15px 24px',
+                    width: '100%'
+                  }}
+                />
             </div>
             
             {/* Event Creation Form */}
@@ -2163,12 +2207,17 @@ function Feed() {
                 <div className="form-group">
                   <label>Description</label>
                   <textarea 
-                    placeholder="Describe your event..."
-                    value={eventData.description}
-                    onChange={(e) => handleEventChange('description', e.target.value)}
-                    disabled={isUploading}
-                    rows={3}
-                  />
+                      placeholder="Describe your event..."
+                      value={eventData.description}
+                      onChange={(e) => handleEventChange('description', e.target.value)}
+                      disabled={isUploading}
+                      rows={3}
+                      style={{
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'break-word',
+                        resize: 'vertical'
+                      }}
+                    />
                 </div>
                 
                 <div className="form-group">
@@ -2190,13 +2239,18 @@ function Feed() {
               <div className="poll-form">
                 <div className="form-group">
                   <label>Poll Question *</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g., Which programming language should we learn next?"
-                    value={pollData.question}
-                    onChange={(e) => handlePollChange('question', e.target.value)}
-                    disabled={isUploading}
-                  />
+                  <textarea  // Change from input to textarea
+                      placeholder={`Option ${index + 1}`}
+                      value={option}
+                      onChange={(e) => handlePollOptionChange(index, e.target.value)}
+                      disabled={isUploading}
+                      rows={2}
+                      style={{
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'break-word',
+                        resize: 'vertical'
+                      }}
+                    />
                 </div>
                 
                 <div className="poll-options">
@@ -2375,7 +2429,7 @@ function Feed() {
               </div>
               
               <div className="post-submit-section">
-                <div className="char-count">{newPost.length}/500</div>
+                <div className="char-count">{newPost.length}/2000</div>
                 <button 
                   className="post-submit-btn" 
                   onClick={handleCreatePost}
@@ -2493,12 +2547,11 @@ function Feed() {
                             🗑️
                           </button>
                         )}
-                        <button className="post-options-btn" title="More options">⋯</button>
                       </div>
                     </div>
 
                     <div className="post-content">
-                      <p>{post.content}</p>
+                      <ReadMore text={post.content} maxLength={300} />
                       
                       {/* Display Event */}
                       {post.type === 'event' && post.event && renderEventCard(post.event)}
