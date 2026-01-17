@@ -419,9 +419,10 @@
   gap: 10px;
 }
 
+/* UPDATED QUICK ACTION BUTTONS - MATCHING NETWORK */
 .quick-action-btn {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid var(--border);
+  background: rgba(30, 41, 59, 0.7); /* Same as network */
+  border: 1px solid var(--border); /* Same as network */
   border-radius: var(--radius-sm);
   padding: 14px 8px;
   color: var(--text-main);
@@ -437,11 +438,10 @@
 }
 
 .quick-action-btn:hover {
-  background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(59, 130, 246, 0.2));
-  border-color: var(--lavender);
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(59, 130, 246, 0.2)); /* EXACT NETWORK HOVER */
+  border-color: var(--lavender); /* EXACT NETWORK HOVER */
+  transform: translateY(-2px); /* EXACT NETWORK HOVER */
 }
-
 .action-icon {
   font-size: 1.3rem;
   margin-bottom: 4px;
@@ -2502,4 +2502,28 @@
     padding: 4px 10px;
     margin-top: 4px;
   }
+}
+/* ========== OVERRIDE QUICK ACTIONS TO MATCH NETWORK ========== */
+.left-sidebar .quick-action-btn {
+  background: rgba(30, 41, 59, 0.7) !important;
+  border: 1px solid #1f2937 !important;
+  border-radius: 8px !important;
+  padding: 14px 8px !important;
+  color: #f1f5f9 !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  min-height: 60px !important;
+}
+
+.left-sidebar .quick-action-btn:hover {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(59, 130, 246, 0.2)) !important;
+  border-color: #a78bfa !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Ensure the grid layout matches */
+.left-sidebar .quick-actions-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
 }

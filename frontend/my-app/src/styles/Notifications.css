@@ -1220,3 +1220,27 @@
     gap: 16px;
   }
 }
+/* ========== OVERRIDE QUICK ACTIONS TO MATCH NETWORK ========== */
+.left-sidebar .quick-action-btn {
+  background: rgba(30, 41, 59, 0.7) !important;
+  border: 1px solid #1f2937 !important;
+  border-radius: 8px !important;
+  padding: 14px 8px !important;
+  color: #f1f5f9 !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  min-height: 60px !important;
+}
+
+.left-sidebar .quick-action-btn:hover {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(59, 130, 246, 0.2)) !important;
+  border-color: #a78bfa !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Ensure the grid layout matches */
+.left-sidebar .quick-actions-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
