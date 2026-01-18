@@ -7,6 +7,199 @@ import axios from "axios";
 import PostModal from "../components/PostModal";
 import Navbar from "../components/Navbar";
 
+// ==================== READ MORE COMPONENT ====================
+const ReadMore = ({ text, maxLength = 300, showFadeEffect = true }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  
+  useEffect(() => {
+    if (text && text.length > maxLength) {
+      setIsTruncated(true);
+    }
+  }, [text, maxLength]);
+
+  if (!text) return null;
+  
+  // If text is already short, show full text
+  if (text.length <= maxLength) {
+    return (
+      <div className="profile-read-more-container">
+        <p className="profile-post-text">
+          {text}
+        </p>
+      </div>
+    );
+  }
+  
+  const displayText = isExpanded ? text : text.substring(0, maxLength) + '...';
+  
+  return (
+    <div className={`profile-read-more-container ${isExpanded ? 'expanded' : 'collapsed'}`}>
+      <p className="profile-post-text">
+        {displayText}
+        {!isExpanded && (
+          <button 
+            className="profile-read-more-btn"
+            onClick={() => setIsExpanded(true)}
+            aria-label="Read more"
+            style={{
+    color: '#a78bfa',
+    fontWeight: '700',
+    backgroundColor: 'rgba(167, 139, 250, 0.1)',
+    border: '1px solid rgba(167, 139, 250, 0.2)'
+  }}
+          >
+            Read more
+          </button>
+        )}
+        {isExpanded && (
+          <button 
+            className="profile-read-less-btn"
+            onClick={() => setIsExpanded(false)}
+            aria-label="Read less"
+            style={{
+    color: '#a78bfa',
+    fontWeight: '700',
+    backgroundColor: 'rgba(167, 139, 250, 0.1)',
+    border: '1px solid rgba(167, 139, 250, 0.2)'
+  }}
+          >
+            Show less
+          </button>
+        )}
+      </p>
+    </div>
+  );
+};
+
+
+// ==================== IMAGE CAROUSEL COMPONENT ====================
+const ImageCarousel = ({ images, videos }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+  
+  // Combine images and videos into media array
+  const media = [...(images || []), ...(videos || [])];
+  
+  if (!media || media.length === 0) return null;
+
+  const isVideo = (item) => item.type === 'video';
+  const totalSlides = media.length;
+
+  const goToSlide = (index) => {
+    setCurrentIndex(index);
+  };
+
+  const nextSlide = () => {
+    goToSlide((prevIndex) => 
+      prevIndex === totalSlides - 1 ? 0 : prevIndex + 1
+    );
+  };
+
+  const prevSlide = () => {
+    goToSlide((prevIndex) => 
+      prevIndex === 0 ? totalSlides - 1 : prevIndex - 1
+    );
+  };
+
+  // Handle touch events for mobile swipe
+  const handleTouchStart = (e) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+    
+    const distance = touchStartX - touchEndX;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      nextSlide();
+    } else if (isRightSwipe) {
+      prevSlide();
+    }
+
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
+  return (
+    <div className="linkedin-carousel profile-carousel">
+      <div 
+        className="carousel-container profile-carousel-container"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {totalSlides > 1 && (
+          <button 
+            className="carousel-arrow left-arrow profile-carousel-arrow profile-left-arrow"
+            onClick={prevSlide}
+            aria-label="Previous image"
+          >
+            ‹
+          </button>
+        )}
+
+        <div className="carousel-slide profile-carousel-slide">
+          {isVideo(media[currentIndex]) ? (
+            <div className="video-slide profile-video-slide">
+              <video
+                src={media[currentIndex].url}
+                className="carousel-video profile-carousel-video"
+                playsInline
+                preload="metadata"
+                controls
+              />
+            </div>
+          ) : (
+            <img
+              src={media[currentIndex].url}
+              alt={`Slide ${currentIndex + 1}`}
+              className="carousel-image profile-carousel-image"
+              loading="lazy"
+            />
+          )}
+        </div>
+
+        {totalSlides > 1 && (
+          <button 
+            className="carousel-arrow right-arrow profile-carousel-arrow profile-right-arrow"
+            onClick={nextSlide}
+            aria-label="Next image"
+          >
+            ›
+          </button>
+        )}
+
+        {totalSlides > 1 && (
+          <div className="image-counter profile-image-counter">
+            {currentIndex + 1} / {totalSlides}
+          </div>
+        )}
+      </div>
+
+      {totalSlides > 1 && (
+        <div className="carousel-dots profile-carousel-dots">
+          {media.map((_, index) => (
+            <button
+              key={index}
+              className={`carousel-dot profile-carousel-dot ${index === currentIndex ? 'active' : ''}`}
+              onClick={() => goToSlide(index)}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 function Profile() {
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [selectedPostForModal, setSelectedPostForModal] = useState(null);
@@ -776,9 +969,9 @@ function Profile() {
               </div>
             ) : (
               <div className="profile-post-content-full">
-                <p>{selectedPost.content}</p>
-                
-                {selectedPost.media && selectedPost.media.length > 0 && (
+                  <ReadMore text={selectedPost.content} maxLength={500} />
+                  
+                  {selectedPost.media && selectedPost.media.length > 0 && (
                   <div className="profile-post-media-full">
                     {selectedPost.media.map((media, index) => (
                       media.type === 'image' ? (
@@ -950,9 +1143,9 @@ function Profile() {
                     </div>
                     
                     <div className="profile-post-content-mini">
-                      <p>{post.content.length > 120 ? post.content.substring(0, 120) + '...' : post.content}</p>
-                      
-                      {post.media && post.media.length > 0 && (
+                        <ReadMore text={post.content} maxLength={120} showFadeEffect={false} />
+                        
+                        {post.media && post.media.length > 0 && (
                         <div className="profile-post-media-mini">
                           {post.media[0].type === 'image' ? (
                             <img 
@@ -1138,12 +1331,12 @@ function Profile() {
     <div className="profile-main-content">
       <div className="profile-tab-header">
         <h3>👤 Profile Information</h3>
-        <button 
+        {/* <button 
           className="profile-edit-profile-tab-btn"
           onClick={() => setIsEditing(!isEditing)}
         >
           {isEditing ? '✏️ Editing...' : '✏️ Edit Profile'}
-        </button>
+        </button> */}
       </div>
       
       <div className="profile-about-layout">
