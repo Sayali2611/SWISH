@@ -2,6 +2,36 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Admin.css";
 
+// ==================== READ MORE COMPONENT FOR ADMIN ====================
+const ReadMore = ({ text, maxLength = 200, className = "" }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Check if text is provided and needs truncation
+  if (!text || text.length <= maxLength) {
+    return <span className={className}>{text}</span>;
+  }
+  
+  // Get the text to display
+  const displayText = isExpanded ? text : text.substring(0, maxLength) + '...';
+  
+  return (
+    <span className={`read-more-container ${className}`}>
+      <span className="admin-post-text">
+        {displayText}
+        {!isExpanded && (
+          <button 
+            className="read-more-btn"
+            onClick={() => setIsExpanded(true)}
+            aria-label="Read more"
+          >
+            Read more
+          </button>
+        )}
+      </span>
+    </span>
+  );
+};
+
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [users, setUsers] = useState([]);
@@ -1138,7 +1168,10 @@ const handleUserActionCompleted = async (action) => {
       
       <div className="post-content-admin">
         <div className="post-text">
-          <p>{post.content}</p>
+          <ReadMore 
+  text={post.content} 
+  maxLength={200}
+/>
         </div>
         
         {/* Enhanced Media Display */}
@@ -1637,7 +1670,11 @@ const handleUserActionCompleted = async (action) => {
                         {post.user?.name}
                       </span>
                     </h4>
-                    <p className="post-content-preview">{post.content?.substring(0, 150)}...</p>
+                    <ReadMore 
+                        text={post.content} 
+                        maxLength={150}
+                        className="post-content-preview"
+                      />
                     <div className="post-meta">
                       <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                       <span className="report-count">🚨 {post.totalReports} reports</span>
@@ -1727,7 +1764,11 @@ const handleUserActionCompleted = async (action) => {
                 <div className="resolved-report-header">
                   <div className="resolved-post-info">
                     <div className="resolved-post-preview">
-                      <span className="post-snippet">"{report.postContent?.substring(0, 80)}..."</span>
+                      <ReadMore 
+                          text={report.postContent} 
+                          maxLength={80}
+                          className="post-snippet"
+                        />
                       <span className="post-author">by {report.authorName}</span>
                     </div>
                     <div className={`resolved-action-badge resolved-action-${report.actionTaken}`}>
@@ -2174,7 +2215,10 @@ const handleUserActionCompleted = async (action) => {
                               </div>
                             </div>
                             <div className="post-card-content">
-                              <p>{post.content?.substring(0, 200)}...</p>
+                              <ReadMore 
+                                  text={post.content} 
+                                  maxLength={200}
+                                />
                               {post.media && post.media.length > 0 && (
                                 <div className="post-media-preview">
                                   {post.media[0].type === 'image' && (
@@ -2271,9 +2315,9 @@ const handleUserActionCompleted = async (action) => {
             </div>
             
             <div className="modal-actions">
-              <button className="modal-btn cancel-btn" onClick={resetModals}>
+              {/* <button className="modal-btn cancel-btn" onClick={resetModals}>
                 Close
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -2332,7 +2376,10 @@ const handleUserActionCompleted = async (action) => {
                     </span>
                   </div>
                   <div className="post-content-body">
-                    <p>{selectedPost.content}</p>
+                      <ReadMore 
+                          text={selectedPost.content} 
+                          maxLength={500}
+                        />
                     
                     {selectedPost.media && selectedPost.media.length > 0 && renderMedia(selectedPost.media)}
                     
@@ -2424,9 +2471,9 @@ const handleUserActionCompleted = async (action) => {
             </div>
             
             <div className="modal-actions">
-              <button className="modal-btn cancel-btn" onClick={resetModals}>
+              {/* <button className="modal-btn cancel-btn" onClick={resetModals}>
                 Close
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -2851,9 +2898,9 @@ const handleUserActionCompleted = async (action) => {
             </div>
             
             <div className="modal-actions">
-              <button className="modal-btn cancel-btn" onClick={resetModals}>
+              {/* <button className="modal-btn cancel-btn" onClick={resetModals}>
                 Close
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
