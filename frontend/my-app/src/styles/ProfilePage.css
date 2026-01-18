@@ -328,3 +328,82 @@ a:focus-visible {
   outline: 2px solid var(--lavender);
   outline-offset: 2px;
 }
+/* Add to ProfilePage.css */
+.profile-private-message {
+  text-align: center;
+  padding: 60px 16px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 20px;
+  box-shadow: var(--shadow);
+}
+
+.profile-private-message .empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.profile-private-message h3 {
+  font-size: 1.4rem;
+  color: var(--text-main);
+  margin: 0 0 12px 0;
+  font-weight: 700;
+}
+
+.profile-private-message p {
+  color: var(--text-dim);
+  font-size: 1rem;
+  max-width: 400px;
+  margin: 0 auto 20px auto;
+}
+/* Add to ProfilePage.css for better comment button styling */
+.action-btn {
+  background: none;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition);
+  font-weight: 600;
+  flex: 1;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  background: var(--elevated-2);
+  color: var(--lavender);
+  transform: translateY(-1px);
+}
+
+.action-btn.liked {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.action-btn.report-btn {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.action-btn.report-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.comment-section {
+  display: none;
+}
+
+/* Private account styling */
+.private-badge {
+  font-size: 12px;
+  margin-left: 4px;
+  opacity: 0.7;
+}

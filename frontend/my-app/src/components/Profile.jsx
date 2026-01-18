@@ -201,6 +201,7 @@ const ImageCarousel = ({ images, videos }) => {
   );
 };
 function Profile() {
+  
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [selectedPostForModal, setSelectedPostForModal] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
@@ -233,6 +234,13 @@ function Profile() {
   const [editingPost, setEditingPost] = useState(null);
   const [editPostContent, setEditPostContent] = useState("");
   const fileInputRef = useRef(null);
+  const [editFormData, setEditFormData] = useState({
+    caption: '',
+    media: [],
+    pollQuestion: '',
+    pollOptions: []
+  });
+  const editMediaInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -772,6 +780,71 @@ function Profile() {
     return Math.round((score / totalFields) * 100);
   };
 
+  // ==================== ADD THIS FUNCTION ====================
+const renderPollCard = (poll, postId) => {
+  if (!poll) return null;
+  
+  // Check if user has voted in this poll
+  const getUserVoteStatus = (pollObj) => {
+    if (!pollObj?.voters || !user) return null;
+    return pollObj.voters.find(v => v.userId === user.id);
+  };
+  
+  const userVote = getUserVoteStatus(poll);
+  const totalVotes = poll.totalVotes || 0;
+  
+  return (
+    <div className="poll-card profile-poll-card">
+      <div className="poll-header">
+        <div className="poll-title">{poll.question}</div>
+        <div className="poll-stats">
+          <span className="vote-count">{totalVotes} votes</span>
+        </div>
+      </div>
+      
+      <div className="poll-options-list">
+        {poll.options.map((option, index) => {
+          const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+          const isUserVote = userVote?.optionIndex === index;
+          
+          return (
+            <div 
+              key={index} 
+              className={`poll-option-item ${isUserVote ? 'selected' : ''}`}
+              style={{ cursor: userVote ? 'default' : 'pointer' }}
+            >
+              <div className="poll-option-radio">
+                {isUserVote && <div className="selected-dot"></div>}
+              </div>
+              <div className="poll-option-text">{option.text}</div>
+              <div className="poll-option-percentage">{percentage}%</div>
+              
+              {totalVotes > 0 && (
+                <div 
+                  className="poll-progress-bar"
+                  style={{ width: `${percentage}%` }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      
+      <div className="poll-footer">
+        {userVote ? (
+          <div className="voted-message">
+            ✅ You voted for "{poll.options[userVote.optionIndex]?.text}"
+          </div>
+        ) : (
+          <div className="vote-btn" style={{ opacity: 0.6, cursor: 'default' }}>
+            Click an option to vote (visit Feed page)
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
   const handlePostClick = (post) => {
     setSelectedPost(post);
     setIsViewingPost(true);
@@ -830,59 +903,91 @@ function Profile() {
     }
   };
 
-  const handleEditPost = (post) => {
-    setEditingPost(post);
-    setEditPostContent(post.content);
-  };
+const handleEditPost = (post) => {
+  setEditingPost(post);
+  
+  // For poll posts, extract poll data
+  let pollQuestion = '';
+  let pollOptions = [];
+  
+  if (post.type === 'poll' && post.poll) {
+    pollQuestion = post.poll.question || '';
+    pollOptions = post.poll.options?.map(opt => opt.text) || [];
+  }
+  
+  // Set all edit form data
+  setEditFormData({
+    caption: post.content || '',
+    media: post.media || [],
+    pollQuestion: pollQuestion,
+    pollOptions: pollOptions
+  });
+  
+  // Keep backward compatibility
+  setEditPostContent(post.content);
+};
 
-  const handleSaveEdit = async () => {
-    if (!editingPost || !editPostContent.trim()) return;
+const handleSaveEdit = async () => {
+  if (!editingPost) return;
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${editingPost._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          content: editPostContent.trim()
-        })
-      });
+  try {
+    const token = localStorage.getItem('token');
+    const payload = {
+      content: editPostContent.trim()
+    };
 
-      if (response.ok) {
-        const updatedPost = await response.json();
-        setUserPosts(prevPosts => 
-          prevPosts.map(post => 
-            post._id === editingPost._id ? {
-              ...post,
-              content: editPostContent.trim(),
-              updatedAt: new Date()
-            } : post
-          )
-        );
-        
-        if (selectedPost && selectedPost._id === editingPost._id) {
-          setSelectedPost({
-            ...selectedPost,
-            content: editPostContent.trim(),
-            updatedAt: new Date()
-          });
-        }
-        
-        setEditingPost(null);
-        setEditPostContent("");
-        setSuccess('Post updated successfully!');
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        const data = await response.json();
-        setError(data.message || 'Failed to update post');
-      }
-    } catch (error) {
-      setError('Network error: Unable to update post');
+    // Add poll data if editing a poll
+    if (editingPost.type === 'poll' && (editFormData.pollQuestion || editFormData.pollOptions.length > 0)) {
+      payload.poll = {
+        question: editFormData.pollQuestion,
+        options: editFormData.pollOptions.map(opt => ({ text: opt }))
+      };
     }
-  };
+
+    // Note: Media editing would require file uploads
+    // For now, we'll keep it simple - you can extend this later
+
+    const response = await fetch(`http://localhost:5000/api/posts/${editingPost._id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const updatedPost = await response.json();
+      
+      // Update posts list
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === editingPost._id ? updatedPost : post
+        )
+      );
+      
+      // Update selected post if viewing
+      if (selectedPost && selectedPost._id === editingPost._id) {
+        setSelectedPost(updatedPost);
+      }
+      
+      // Reset editing state
+      setEditingPost(null);
+      setEditPostContent("");
+      setEditFormData({
+        caption: '',
+        media: [],
+        pollQuestion: '',
+        pollOptions: []
+      });
+      
+      setSuccess('Post updated successfully!');
+      setTimeout(() => setSuccess(""), 3000);
+    }
+  } catch (error) {
+    setError('Network error: Unable to update post');
+  }
+};
 
   const handleCancelEdit = () => {
     setEditingPost(null);
@@ -942,32 +1047,140 @@ function Profile() {
               </div>
             </div>
             
-            {editingPost && editingPost._id === selectedPost._id ? (
-              <div className="profile-edit-post-section">
-                <textarea
-                  className="profile-edit-post-input"
-                  value={editPostContent}
-                  onChange={(e) => setEditPostContent(e.target.value)}
-                  rows={4}
-                  placeholder="Edit your post..."
-                />
-                <div className="profile-edit-post-actions">
-                  <button 
-                    className="profile-cancel-edit-btn"
-                    onClick={handleCancelEdit}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    className="profile-save-edit-btn"
-                    onClick={handleSaveEdit}
-                    disabled={!editPostContent.trim()}
-                  >
-                    Save Changes
-                  </button>
-                </div>
+{editingPost && editingPost._id === selectedPost._id ? (
+  <div className="profile-edit-post-section">
+    {/* Text Content */}
+    <textarea
+      className="profile-edit-textarea"
+      value={editPostContent}
+      onChange={(e) => setEditPostContent(e.target.value)}
+      placeholder="Edit your post..."
+      rows={4}
+    />
+    
+    {/* Poll Editing */}
+    {selectedPost.type === 'poll' && (
+      <div className="profile-edit-poll-section">
+        <div className="profile-edit-poll-title">
+          📊 Edit Poll
+        </div>
+        
+        <input
+          type="text"
+          className="profile-poll-question-input"
+          value={editFormData.pollQuestion}
+          onChange={(e) => setEditFormData({...editFormData, pollQuestion: e.target.value})}
+          placeholder="Edit poll question..."
+        />
+        
+        <div className="profile-poll-options-list">
+          <div className="profile-edit-poll-title">
+            Options:
+          </div>
+          {editFormData.pollOptions.map((option, index) => (
+            <div key={index} className="profile-poll-option-row">
+              <input
+                type="text"
+                value={option}
+                onChange={(e) => {
+                  const newOptions = [...editFormData.pollOptions];
+                  newOptions[index] = e.target.value;
+                  setEditFormData({...editFormData, pollOptions: newOptions});
+                }}
+                placeholder={`Option ${index + 1}`}
+                className="profile-poll-option-input"
+              />
+              <button 
+                type="button"
+                className="profile-remove-option-btn"
+                onClick={() => {
+                  const newOptions = editFormData.pollOptions.filter((_, i) => i !== index);
+                  setEditFormData({...editFormData, pollOptions: newOptions});
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          
+          <button 
+            type="button"
+            className="profile-add-option-btn"
+            onClick={() => setEditFormData({
+              ...editFormData, 
+              pollOptions: [...editFormData.pollOptions, '']
+            })}
+          >
+            + Add Option
+          </button>
+        </div>
+      </div>
+    )}
+    
+    {/* Media Editing */}
+    <div className="profile-edit-media-section">
+      <div className="profile-edit-media-title">
+        🖼️ Current Media
+      </div>
+      
+      {selectedPost.media && selectedPost.media.length > 0 ? (
+        <>
+          <div className="profile-current-media-grid">
+            {selectedPost.media.map((media, index) => (
+              <div key={index} className="profile-media-preview-box">
+                {media.type === 'image' ? (
+                  <img 
+                    src={media.url} 
+                    alt={`Media ${index + 1}`}
+                    className="profile-media-preview-img"
+                  />
+                ) : (
+                  <div className="profile-media-preview-video">
+                    ▶️ Video
+                  </div>
+                )}
               </div>
-            ) : (
+            ))}
+          </div>
+          
+          <button 
+            type="button"
+            className="profile-change-media-btn"
+            onClick={() => editMediaInputRef.current?.click()}
+          >
+            📷 Change Media
+          </button>
+        </>
+      ) : (
+        <button 
+          type="button"
+          className="profile-change-media-btn"
+          onClick={() => editMediaInputRef.current?.click()}
+        >
+          📷 Add Media
+        </button>
+      )}
+    </div>
+    
+    {/* Action Buttons */}
+    <div className="profile-edit-actions-row">
+      <button 
+        className="profile-cancel-edit-btn"
+        onClick={handleCancelEdit}
+      >
+        Cancel
+      </button>
+      <button 
+        className="profile-save-edit-btn"
+        onClick={handleSaveEdit}
+        disabled={!editPostContent.trim()}
+      >
+        💾 Save Changes
+      </button>
+    </div>
+  </div>
+) : (
+
               <div className="profile-post-content-full">
                   <ReadMore text={selectedPost.content} maxLength={500} />
                   {selectedPost.media && selectedPost.media.length > 0 && (
@@ -1013,17 +1226,7 @@ function Profile() {
                   </div>
                 )}
                 
-                {selectedPost.type === 'poll' && selectedPost.poll && (
-                  <div className="profile-post-poll-full">
-                    <div className="profile-poll-full-header">
-                      <span className="profile-poll-full-tag">📊 Poll</span>
-                      <h4 className="profile-poll-full-question">{selectedPost.poll.question}</h4>
-                    </div>
-                    <div className="profile-poll-full-stats">
-                      <span className="profile-poll-total-votes">{selectedPost.poll.totalVotes || 0} votes</span>
-                    </div>
-                  </div>
-                )}
+                {selectedPost.type === 'poll' && selectedPost.poll && renderPollCard(selectedPost.poll, selectedPost._id)}
               </div>
             )}
             
@@ -1131,15 +1334,16 @@ function Profile() {
                     
                     <div className="profile-post-content-mini">
                         <ReadMore text={post.content} maxLength={120} showFadeEffect={false} />
+                        {post.type === 'poll' && post.poll && renderPollCard(post.poll, post._id)}
                         
                        {post.media && post.media.length > 0 && (
-  <div className="profile-post-media-mini">
-    <ImageCarousel 
-      images={post.media.filter(m => m.type === 'image')}
-      videos={post.media.filter(m => m.type === 'video')}
-    />
-  </div>
-)}
+                          <div className="profile-post-media-mini">
+                            <ImageCarousel 
+                              images={post.media.filter(m => m.type === 'image')}
+                              videos={post.media.filter(m => m.type === 'video')}
+                            />
+                          </div>
+                        )}
                     </div>
                     
                     <div className="profile-post-stats-mini">

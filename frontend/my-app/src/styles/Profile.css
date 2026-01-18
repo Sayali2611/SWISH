@@ -2376,3 +2376,420 @@ select.profile-input {
   white-space: pre-wrap !important;
   overflow-wrap: break-word !important;
 }
+/* ========== POLL CARD STYLES FOR PROFILE ========== */
+.poll-card {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.05), rgba(249, 115, 22, 0.05));
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  border-left: 4px solid #f97316;
+}
+
+.poll-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.poll-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f9fafb;
+  margin-bottom: 8px;
+}
+
+.poll-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.poll-option-item {
+  position: relative;
+  border: 2px solid #374151;
+  border-radius: 8px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.poll-option-item:hover {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.05);
+}
+
+.poll-option-item.selected {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.poll-option-radio {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #6b7280;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selected-dot {
+  width: 10px;
+  height: 10px;
+  background: #f97316;
+  border-radius: 50%;
+}
+
+.poll-option-text {
+  flex: 1;
+  font-weight: 500;
+  color: #f9fafb;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.poll-option-percentage {
+  font-weight: 600;
+  color: #f97316;
+  min-width: 60px;
+  text-align: right;
+}
+
+.poll-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(249, 115, 22, 0.2);
+  border-radius: 8px;
+  z-index: -1;
+  transition: width 0.5s ease;
+}
+
+.poll-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #9ca3af;
+  font-size: 14px;
+  padding-top: 16px;
+  border-top: 1px solid #374151;
+}
+
+.poll-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #374151;
+}
+
+.vote-count {
+  font-weight: 600;
+  color: #f97316;
+  font-size: 14px;
+}
+
+.vote-btn {
+  background: #f97316;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voted-message {
+  color: #10b981;
+  font-weight: 600;
+  padding: 10px 16px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+/* ========== EDIT POST SECTION ========== */
+.profile-edit-post-section {
+  margin: 20px 0;
+  padding: 24px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid var(--profile-elevated-3);
+  border-radius: var(--profile-radius);
+  box-shadow: var(--profile-shadow);
+}
+
+/* Text area - no scroll */
+.profile-edit-textarea {
+  width: 100%;
+  border: 1px solid var(--profile-border);
+  border-radius: var(--profile-radius-sm);
+  padding: 16px;
+  font-size: 15px;
+  background: var(--profile-elevated-2);
+  color: var(--profile-text-main);
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  min-height: 120px;
+  resize: none;
+  transition: var(--profile-transition);
+}
+
+.profile-edit-textarea:focus {
+  border-color: var(--profile-lavender);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+}
+
+/* ========== POLL EDIT SECTION ========== */
+.profile-edit-poll-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: rgba(30, 41, 59, 0.7);
+  border-radius: var(--profile-radius);
+  border: 1px solid var(--profile-border);
+}
+
+.profile-edit-poll-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--profile-text-main);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Poll question input */
+.profile-poll-question-input {
+  width: 100%;
+  border: 1px solid var(--profile-border);
+  border-radius: var(--profile-radius-sm);
+  padding: 14px 16px;
+  font-size: 15px;
+  background: var(--profile-elevated-2);
+  color: var(--profile-text-main);
+  outline: none;
+  margin-bottom: 20px;
+  font-weight: 600;
+  transition: var(--profile-transition);
+}
+
+.profile-poll-question-input:focus {
+  border-color: var(--profile-lavender);
+}
+
+/* Poll options */
+.profile-poll-options-list {
+  margin: 15px 0;
+}
+
+.profile-poll-option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.profile-poll-option-input {
+  flex: 1;
+  border: 1px solid var(--profile-border);
+  border-radius: var(--profile-radius-sm);
+  padding: 12px 14px;
+  font-size: 14px;
+  background: var(--profile-elevated-2);
+  color: var(--profile-text-main);
+  outline: none;
+  transition: var(--profile-transition);
+}
+
+.profile-poll-option-input:focus {
+  border-color: var(--profile-lavender);
+}
+
+.profile-remove-option-btn {
+  background: var(--profile-danger);
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--profile-transition);
+  flex-shrink: 0;
+}
+
+.profile-remove-option-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+/* Add option button - looks like your other buttons */
+.profile-add-option-btn {
+  background: transparent;
+  border: 1px solid var(--profile-border);
+  color: var(--profile-text-dim);
+  padding: 12px 20px;
+  border-radius: var(--profile-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: var(--profile-transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.profile-add-option-btn:hover {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: var(--profile-lavender);
+  color: var(--profile-lavender);
+}
+
+/* ========== MEDIA EDIT SECTION ========== */
+.profile-edit-media-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: rgba(30, 41, 59, 0.7);
+  border-radius: var(--profile-radius);
+  border: 1px solid var(--profile-border);
+}
+
+.profile-edit-media-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--profile-text-main);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Current media preview */
+.profile-current-media-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.profile-media-preview-box {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid var(--profile-border);
+}
+
+.profile-media-preview-box:hover {
+  border-color: var(--profile-lavender);
+}
+
+.profile-media-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-media-preview-video {
+  width: 100%;
+  height: 100%;
+  background: var(--profile-elevated-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--profile-text-dim);
+  font-weight: 600;
+}
+
+/* Change media button - matches your design */
+.profile-change-media-btn {
+  background: transparent;
+  border: 1px solid var(--profile-lavender);
+  color: var(--profile-lavender);
+  padding: 12px 24px;
+  border-radius: var(--profile-radius-sm);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  transition: var(--profile-transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.profile-change-media-btn:hover {
+  background: var(--profile-lavender);
+  color: var(--profile-black);
+  transform: translateY(-1px);
+}
+
+/* ========== EDIT ACTIONS ========== */
+.profile-edit-actions-row {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid var(--profile-border);
+}
+
+.profile-cancel-edit-btn {
+  background: transparent;
+  border: 1px solid var(--profile-border);
+  color: var(--profile-text-dim);
+  padding: 12px 24px;
+  border-radius: var(--profile-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: var(--profile-transition);
+}
+
+.profile-cancel-edit-btn:hover {
+  background: var(--profile-elevated-2);
+  color: var(--profile-text-main);
+  border-color: var(--profile-lavender);
+}
+
+.profile-save-edit-btn {
+  background: linear-gradient(135deg, var(--profile-lavender), var(--profile-royal-blue));
+  color: var(--profile-black);
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--profile-radius-sm);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  transition: var(--profile-transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-save-edit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(167, 139, 250, 0.3);
+}
+
+.profile-save-edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
