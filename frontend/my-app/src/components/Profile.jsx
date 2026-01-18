@@ -149,23 +149,23 @@ const ImageCarousel = ({ images, videos }) => {
 
         <div className="carousel-slide profile-carousel-slide">
           {isVideo(media[currentIndex]) ? (
-            <div className="video-slide profile-video-slide">
-              <video
-                src={media[currentIndex].url}
-                className="carousel-video profile-carousel-video"
-                playsInline
-                preload="metadata"
-                controls
-              />
-            </div>
-          ) : (
-            <img
-              src={media[currentIndex].url}
-              alt={`Slide ${currentIndex + 1}`}
-              className="carousel-image profile-carousel-image"
-              loading="lazy"
-            />
-          )}
+  <div className="video-slide profile-video-slide">
+    <video
+      src={media[currentIndex].url}
+      className="carousel-video profile-carousel-video"
+      playsInline
+      preload="metadata"
+      controls
+    />
+  </div>
+) : (
+  <img
+    src={media[currentIndex].url}
+    alt={`Slide ${currentIndex + 1}`}
+    className="carousel-image profile-carousel-image"
+    loading="lazy"
+  />
+)}
         </div>
 
         {totalSlides > 1 && (
@@ -970,27 +970,14 @@ function Profile() {
             ) : (
               <div className="profile-post-content-full">
                   <ReadMore text={selectedPost.content} maxLength={500} />
-                  
                   {selectedPost.media && selectedPost.media.length > 0 && (
-                  <div className="profile-post-media-full">
-                    {selectedPost.media.map((media, index) => (
-                      media.type === 'image' ? (
-                        <img 
-                          key={index}
-                          src={media.url} 
-                          alt={`Post media ${index + 1}`}
-                          className="profile-post-media-image"
-                        />
-                      ) : (
-                        <div key={index} className="profile-post-media-video">
-                          <video controls className="profile-post-video-player">
-                            <source src={media.url} type={`video/${media.format}`} />
-                          </video>
-                        </div>
-                      )
-                    ))}
-                  </div>
-                )}
+  <div className="profile-post-media-full">
+    <ImageCarousel 
+      images={selectedPost.media.filter(m => m.type === 'image')}
+      videos={selectedPost.media.filter(m => m.type === 'video')}
+    />
+  </div>
+)}
                 
                 {selectedPost.type === 'event' && selectedPost.event && (
                   <div className="profile-post-event-full">
@@ -1145,24 +1132,14 @@ function Profile() {
                     <div className="profile-post-content-mini">
                         <ReadMore text={post.content} maxLength={120} showFadeEffect={false} />
                         
-                        {post.media && post.media.length > 0 && (
-                        <div className="profile-post-media-mini">
-                          {post.media[0].type === 'image' ? (
-                            <img 
-                              src={post.media[0].url} 
-                              alt="Post media" 
-                              className="profile-post-media-thumbnail"
-                            />
-                          ) : (
-                            <div className="profile-video-thumbnail">
-                              <span>🎥 Video</span>
-                            </div>
-                          )}
-                          {post.media.length > 1 && (
-                            <div className="profile-media-count">+{post.media.length - 1} more</div>
-                          )}
-                        </div>
-                      )}
+                       {post.media && post.media.length > 0 && (
+  <div className="profile-post-media-mini">
+    <ImageCarousel 
+      images={post.media.filter(m => m.type === 'image')}
+      videos={post.media.filter(m => m.type === 'video')}
+    />
+  </div>
+)}
                     </div>
                     
                     <div className="profile-post-stats-mini">
