@@ -1865,26 +1865,6 @@ function Explore() {
                 {user?.bio?.slice(0, 80) || "Welcome to Swish! Explore trending content and connect with your community."}
               </p>
             </div>
-            <div className="explore-mini-stats">
-              <div className="explore-stats-grid">
-                <div className="explore-stat-item">
-                  <span className="explore-stat-number">{userStats.posts}</span>
-                  <span className="explore-stat-label">Posts</span>
-                </div>
-                <div className="explore-stat-item">
-                  <span className="explore-stat-number">{userStats.followers}</span>
-                  <span className="explore-stat-label">Followers</span>
-                </div>
-                <div className="explore-stat-item">
-                  <span className="explore-stat-number">{userStats.following}</span>
-                  <span className="explore-stat-label">Following</span>
-                </div>
-                <div className="explore-stat-item">
-                  <span className="explore-stat-number">{connections.length}</span>
-                  <span className="explore-stat-label">Connections</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Quick Filters */}
