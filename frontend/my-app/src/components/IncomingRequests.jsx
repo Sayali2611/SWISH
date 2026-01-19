@@ -11,7 +11,7 @@ function IncomingRequests() {
   }, []);
 
   const loadRequests = async () => {
-    const res = await axios.get("${process.env.VITE_API_URL}/api/network/incoming", {
+    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/network/incoming`, {
       headers: { Authorization: token },
     });
     setRequests(res.data);
@@ -19,7 +19,7 @@ function IncomingRequests() {
 
   const acceptRequest = async (id) => {
     await axios.post(
-      `${process.env.VITE_API_URL}/api/network/accept/${id}`,
+      `${import.meta.env.VITE_API_URL}/api/network/accept/${id}`,
       {},
       { headers: { Authorization: token } }
     );
@@ -29,7 +29,7 @@ function IncomingRequests() {
 
   const cancelRequest = async (id) => {
     await axios.delete(
-      `${process.env.VITE_API_URL}/api/network/cancel/${id}`,
+      `${import.meta.env.VITE_API_URL}/api/network/cancel/${id}`,
       { headers: { Authorization: token } }
     );
     alert("Request Canceled");

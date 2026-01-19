@@ -99,7 +99,7 @@ function Network() {
   const fetchConnectionHistory = async () => {
     try {
       const res = await axios.get(
-        `${process.env.VITE_API_URL}/api/network/history?timeframe=${graphTimeframe}`, 
+        `${import.meta.env.VITE_API_URL}/api/network/history?timeframe=${graphTimeframe}`, 
         authHeader
       );
       setConnectionHistory(res.data?.history || []);
@@ -117,7 +117,7 @@ function Network() {
 
   const fetchUsersWithConnections = async () => {
     try {
-      const res = await axios.get("${process.env.VITE_API_URL}/api/users/with-connections", authHeader);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/with-connections`, authHeader);
       setUsersWithConnections(res.data || []);
     } catch (err) {
       console.error("Error fetching users with connections:", err);
@@ -440,7 +440,7 @@ function Network() {
   // 🔵 API CALL FUNCTIONS
   const fetchUserProfile = async () => {
     try {
-      const res = await axios.get("${process.env.VITE_API_URL}/api/auth/profile", authHeader);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/profile`, authHeader);
       setUser(res.data);
     } catch (err) {
       console.error("Error fetching user profile:", err);
@@ -449,7 +449,7 @@ function Network() {
 
   const fetchNotificationCount = async () => {
     try {
-      const res = await axios.get("${process.env.VITE_API_URL}/api/notifications/unread/count", authHeader);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/unread/count`, authHeader);
       setNotifCount(res.data.count || 0);
     } catch (err) {
       console.error("Error fetching notification count:", err);
@@ -460,10 +460,10 @@ function Network() {
     setLoading(true);
     try {
       const [usersRes, incomingRes, outgoingRes, connectionsRes] = await Promise.all([
-        axios.get("${process.env.VITE_API_URL}/api/users", authHeader),
-        axios.get("${process.env.VITE_API_URL}/api/network/requests/received", authHeader),
-        axios.get("${process.env.VITE_API_URL}/api/network/requests/sent", authHeader),
-        axios.get("${process.env.VITE_API_URL}/api/network/connections", authHeader)
+        axios.get(`${import.meta.env.VITE_API_URL}/api/users`, authHeader),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/network/requests/received`, authHeader),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/network/requests/sent`, authHeader),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/network/connections`, authHeader)
       ]);
       
       setUsers(usersRes.data || []);
@@ -490,7 +490,7 @@ function Network() {
       const isRemoval = endpoint === "remove";
       const isConnection = endpoint === "accept" || endpoint === "request";
       
-      await axios.post(`${process.env.VITE_API_URL}/api/network/${endpoint}/${id}`, {}, authHeader);
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/network/${endpoint}/${id}`, {}, authHeader);
       
       const eventType = isRemoval ? 'disconnected' : 
                       isConnection ? 'connected' : null;
@@ -507,7 +507,7 @@ function Network() {
         setConnectionHistory(prev => [...prev, historyEvent]);
         
         try {
-          await axios.post("${process.env.VITE_API_URL}/api/network/history/record", 
+          await axios.post(`${import.meta.env.VITE_API_URL}/api/network/history/record`, 
             historyEvent, 
             authHeader
           );

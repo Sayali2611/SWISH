@@ -20,7 +20,7 @@ const Navbar = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const res = await axios.get("${process.env.VITE_API_URL}/api/auth/profile", authHeader);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/profile`, authHeader);
       setUser(res.data);
     } catch (err) {
       console.error("Error fetching user profile:", err);
@@ -29,7 +29,7 @@ const Navbar = () => {
 
   const fetchNotificationCount = async () => {
     try {
-      const res = await axios.get("${process.env.VITE_API_URL}/api/notifications/unread/count", authHeader);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/unread/count`, authHeader);
       setNotifCount(res.data.count || 0);
     } catch (err) {
       console.error("Error fetching notification count:", err);

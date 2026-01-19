@@ -1024,7 +1024,7 @@ function Explore() {
   // Fetch detailed user profile
   const fetchUserProfile = async (userId, token) => {
     try {
-      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/profile`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1047,7 +1047,7 @@ function Explore() {
   // Fetch user stats
   const fetchUserStats = async (userId, token) => {
     try {
-      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/profile/stats`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1083,7 +1083,7 @@ function Explore() {
   // NEW: Fetch connections
   const fetchConnections = async (token) => {
     try {
-      const response = await fetch('${process.env.VITE_API_URL}/api/network/connections', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/connections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -1111,7 +1111,7 @@ function Explore() {
     }
     
     try {
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts?connections=${connectionIds.join(',')}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts?connections=${connectionIds.join(',')}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -1127,7 +1127,7 @@ function Explore() {
   // NEW: Fetch all users for PostModal
   const fetchAllUsers = async (token) => {
     try {
-      const response = await fetch('${process.env.VITE_API_URL}/api/users', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -1156,7 +1156,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('${process.env.VITE_API_URL}/api/network/connections', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/connections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -1220,7 +1220,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postToShare._id}/share`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postToShare._id}/share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1278,7 +1278,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.VITE_API_URL}/api/explore/trending?timeframe=${timeFilter}`,
+        `${import.meta.env.VITE_API_URL}/api/explore/trending?timeframe=${timeFilter}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1314,7 +1314,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.VITE_API_URL}/api/explore/latest?page=${pageRef.current}&limit=10`,
+        `${import.meta.env.VITE_API_URL}/api/explore/latest?page=${pageRef.current}&limit=10`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1355,7 +1355,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.VITE_API_URL}/api/explore/category/${categoryFilter}`,
+        `${import.meta.env.VITE_API_URL}/api/explore/category/${categoryFilter}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1391,7 +1391,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.VITE_API_URL}/api/explore/media/${mediaFilter}`,
+        `${import.meta.env.VITE_API_URL}/api/explore/media/${mediaFilter}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1426,7 +1426,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        '${process.env.VITE_API_URL}/api/explore/people',
+        `${import.meta.env.VITE_API_URL}/api/explore/people`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1471,7 +1471,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        '${process.env.VITE_API_URL}/api/explore/hashtags/trending',
+        `${import.meta.env.VITE_API_URL}/api/explore/hashtags/trending`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1505,7 +1505,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.VITE_API_URL}/api/explore/search?q=${encodeURIComponent(query)}`,
+        `${import.meta.env.VITE_API_URL}/api/explore/search?q=${encodeURIComponent(query)}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1557,7 +1557,7 @@ function Explore() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1597,7 +1597,7 @@ function Explore() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/network/request/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/request/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1638,7 +1638,7 @@ function Explore() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comment`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1685,7 +1685,7 @@ function Explore() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.VITE_API_URL}/api/explore/hashtag/${encodeURIComponent(cleanTag)}`,
+        `${import.meta.env.VITE_API_URL}/api/explore/hashtag/${encodeURIComponent(cleanTag)}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`

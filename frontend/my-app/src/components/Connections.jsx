@@ -11,7 +11,7 @@ function Connections() {
   }, []);
 
   const loadConnections = async () => {
-    const res = await axios.get("${process.env.VITE_API_URL}/api/users/me", {
+    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/me`, {
       headers: { Authorization: token },
     });
     setConnections(res.data.connections);

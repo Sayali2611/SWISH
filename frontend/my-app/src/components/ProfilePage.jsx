@@ -502,7 +502,7 @@ useEffect(() => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/users/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -526,7 +526,7 @@ const fetchUserPosts = async () => {
     console.log('📡 Fetching posts for user:', userId);
     console.log('🔗 Connection status:', connectionStatus); // Add this
     
-    const response = await fetch(`${process.env.VITE_API_URL}/api/users/${userId}/posts`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}/posts`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
@@ -563,7 +563,7 @@ const fetchUserPosts = async () => {
   const fetchConnectionStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/network/status/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/status/${userId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -579,7 +579,7 @@ const fetchUserPosts = async () => {
   const fetchAllUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/users', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -595,7 +595,7 @@ const fetchUserPosts = async () => {
   const fetchShareCount = async (postId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/shares`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/shares`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -617,7 +617,7 @@ const fetchUserPosts = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -646,7 +646,7 @@ const fetchUserPosts = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comment`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -681,7 +681,7 @@ const fetchUserPosts = async () => {
   const handleEditComment = async (postId, commentId, text) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -715,7 +715,7 @@ const fetchUserPosts = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -749,7 +749,7 @@ const fetchUserPosts = async () => {
   const handleLikeComment = async (postId, commentId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -786,7 +786,7 @@ const fetchUserPosts = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -829,7 +829,7 @@ const fetchUserPosts = async () => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('${process.env.VITE_API_URL}/api/network/connections', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/connections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -844,7 +844,7 @@ const fetchUserPosts = async () => {
       
       // Fetch post share count
       try {
-        const shareResponse = await fetch(`${process.env.VITE_API_URL}/api/posts/${post._id}/shares`, {
+        const shareResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${post._id}/shares`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -906,7 +906,7 @@ const fetchUserPosts = async () => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postToShare._id}/share`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postToShare._id}/share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -971,7 +971,7 @@ const fetchUserPosts = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${selectedPostId}/report`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${selectedPostId}/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1000,7 +1000,7 @@ const fetchUserPosts = async () => {
     try {
       setIsLoadingConnection(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/network/send/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/send/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1027,7 +1027,7 @@ const fetchUserPosts = async () => {
     try {
       setIsLoadingConnection(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/network/accept/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/accept/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1053,7 +1053,7 @@ const fetchUserPosts = async () => {
   const handleRejectRequest = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/network/reject/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/reject/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1073,7 +1073,7 @@ const fetchUserPosts = async () => {
   const handleCancelRequest = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/network/cancel/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/cancel/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1094,7 +1094,7 @@ const fetchUserPosts = async () => {
     if (window.confirm('Are you sure you want to remove this connection?')) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${process.env.VITE_API_URL}/api/network/reject/${userId}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/reject/${userId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,

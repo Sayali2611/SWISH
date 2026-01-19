@@ -172,7 +172,7 @@ useEffect(() => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/admin/stats', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -193,7 +193,7 @@ useEffect(() => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/admin/users/search', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/search`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -226,7 +226,7 @@ useEffect(() => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/admin/posts', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/posts`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -249,7 +249,7 @@ useEffect(() => {
     setReportsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/admin/reports', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/reports`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -272,7 +272,7 @@ const fetchAnalytics = async () => {
   setAnalyticsLoading(true);
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('${process.env.VITE_API_URL}/api/admin/analytics', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/analytics`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -315,7 +315,7 @@ const fetchResolvedReports = async () => {
   setResolvedLoading(true);
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('${process.env.VITE_API_URL}/api/admin/reports/resolved', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/reports/resolved`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -351,7 +351,7 @@ const fetchResolvedReports = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/admin/users/${selectedUser._id}/role`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${selectedUser._id}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -388,7 +388,7 @@ const handleRestrictUser = async () => {
 
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${process.env.VITE_API_URL}/api/admin/users/${selectedUser._id}/restrict`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${selectedUser._id}/restrict`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -424,7 +424,7 @@ const handleRestrictUser = async () => {
       // ✅ FIX: Resolve the report if it came from a report
       if (selectedReport) {
         try {
-          const resolveResponse = await fetch(`${process.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
+          const resolveResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -469,7 +469,7 @@ const handleUnrestrictUser = async (user) => {
   
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${process.env.VITE_API_URL}/api/admin/users/${user._id}/unrestrict`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${user._id}/unrestrict`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -513,14 +513,14 @@ const handleUnrestrictUser = async (user) => {
       const token = localStorage.getItem('token');
       
       // Fetch user's posts
-      const postsRes = await fetch(`${process.env.VITE_API_URL}/api/users/${user._id}/posts`, {
+      const postsRes = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${user._id}/posts`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
       const postsData = postsRes.ok ? await postsRes.json() : [];
       
       // Fetch user's activity
-      const activityRes = await fetch(`${process.env.VITE_API_URL}/api/users/${user._id}/activity`, {
+      const activityRes = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${user._id}/activity`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -549,7 +549,7 @@ const handleUnrestrictUser = async (user) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/admin/users/${selectedUser._id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${selectedUser._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -590,7 +590,7 @@ const handleWarnUser = async () => {
 
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${process.env.VITE_API_URL}/api/admin/users/${selectedUser._id}/warn`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${selectedUser._id}/warn`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -605,7 +605,7 @@ const handleWarnUser = async () => {
       // ✅ FIX: Resolve the report if it came from a report
       if (selectedReport) {
         try {
-          const resolveResponse = await fetch(`${process.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
+          const resolveResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -646,7 +646,7 @@ const handleWarnUser = async () => {
   const handleChangeStatus = async (user, newStatus) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/admin/users/${user._id}/status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${user._id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -692,7 +692,7 @@ const handleWarnUser = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/admin/posts/${selectedPost._id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/posts/${selectedPost._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -756,7 +756,7 @@ const handleResolveReportConfirmed = async () => {
 
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${process.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -812,7 +812,7 @@ const handleUserActionCompleted = async (action) => {
     // First, handle the user action (warn/restrict) was already done
     // Now resolve the report
     const token = localStorage.getItem('token');
-    const response = await fetch(`${process.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/reports/${selectedReport._id}/resolve`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

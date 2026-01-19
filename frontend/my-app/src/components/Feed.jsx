@@ -607,7 +607,7 @@ function Feed() {
   const fetchUserWithRestriction = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/auth/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -856,7 +856,7 @@ function Feed() {
         }))}`;
       }
       
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts${queryParams}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts${queryParams}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -900,7 +900,7 @@ function Feed() {
   const fetchAllUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/users', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -929,7 +929,7 @@ function Feed() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('${process.env.VITE_API_URL}/api/network/connections', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/connections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -944,7 +944,7 @@ function Feed() {
       
       // Fetch post share count
       try {
-        const shareResponse = await fetch(`${process.env.VITE_API_URL}/api/posts/${post._id}/shares`, {
+        const shareResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${post._id}/shares`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -1010,7 +1010,7 @@ function Feed() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postToShare._id}/share`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postToShare._id}/share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1099,7 +1099,7 @@ function Feed() {
 
       const fetchInitialCount = async () => {
         try {
-          const response = await fetch("${process.env.VITE_API_URL}/api/notifications/unread/count", {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/unread/count`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const data = await response.json();
@@ -1321,7 +1321,7 @@ function Feed() {
           formData.append('media', file);
         });
 
-        response = await fetch('${process.env.VITE_API_URL}/api/posts/upload', {
+        response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/upload`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -1329,7 +1329,7 @@ function Feed() {
 
         result = await response.json();
       } else {
-        response = await fetch('${process.env.VITE_API_URL}/api/posts', {
+        response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1395,7 +1395,7 @@ function Feed() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/rsvp`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/rsvp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1434,7 +1434,7 @@ function Feed() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/vote`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1471,7 +1471,7 @@ function Feed() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1505,7 +1505,7 @@ function Feed() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comment`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1556,7 +1556,7 @@ function Feed() {
   const handleEditComment = async (postId, commentId, text) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1593,7 +1593,7 @@ function Feed() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1630,7 +1630,7 @@ function Feed() {
   const handleLikeComment = async (postId, commentId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1668,7 +1668,7 @@ function Feed() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1704,7 +1704,7 @@ function Feed() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${selectedPostId}/report`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${selectedPostId}/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1799,7 +1799,7 @@ function Feed() {
 
     if (notifCount > 0) {
       try {
-        await fetch("${process.env.VITE_API_URL}/api/notifications/read-all", {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/read-all`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}` }
         });

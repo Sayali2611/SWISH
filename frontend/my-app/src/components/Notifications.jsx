@@ -59,7 +59,7 @@ export default function NotificationsPage() {
   // Fetch user profile
   const fetchUserProfile = async () => {
     try {
-      const res = await fetch("${process.env.VITE_API_URL}/api/auth/profile", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -77,7 +77,7 @@ export default function NotificationsPage() {
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("${process.env.VITE_API_URL}/api/notifications/me", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -92,7 +92,7 @@ export default function NotificationsPage() {
   // Fetch notification count
   const fetchNotificationCount = async () => {
     try {
-      const res = await fetch("${process.env.VITE_API_URL}/api/notifications/unread/count", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/unread/count`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -105,7 +105,7 @@ export default function NotificationsPage() {
   // Fetch trending events
   const fetchTrendingEvents = async () => {
     try {
-      const res = await fetch("${process.env.VITE_API_URL}/api/explore/trending?limit=4", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/explore/trending?limit=4`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -131,7 +131,7 @@ export default function NotificationsPage() {
   // Fetch user's connections
   const fetchConnections = async () => {
     try {
-      const res = await fetch("${process.env.VITE_API_URL}/api/network/connections", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/network/connections`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -145,7 +145,7 @@ export default function NotificationsPage() {
   // Fetch user's posts count
   const fetchUserPostsCount = async () => {
     try {
-      const res = await fetch(`${process.env.VITE_API_URL}/api/users/${user?._id}/posts/count`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${user?._id}/posts/count`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -159,7 +159,7 @@ export default function NotificationsPage() {
   const fetchSuggestedUsers = async () => {
     try {
       // First get all users
-      const res = await fetch("${process.env.VITE_API_URL}/api/users", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const allUsers = await res.json();
@@ -188,7 +188,7 @@ export default function NotificationsPage() {
   // MARK ONE AS READ
   const markAsRead = async (id) => {
     try {
-      await fetch(`${process.env.VITE_API_URL}/api/notifications/${id}/read`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${id}/read`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -208,7 +208,7 @@ export default function NotificationsPage() {
   // DELETE ONE
   const deleteNotification = async (id) => {
     try {
-      await fetch(`${process.env.VITE_API_URL}/api/notifications/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -235,7 +235,7 @@ export default function NotificationsPage() {
   // MARK ALL
   const markAll = async () => {
     try {
-      await fetch("${process.env.VITE_API_URL}/api/notifications/read-all", {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/read-all`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -325,7 +325,7 @@ export default function NotificationsPage() {
     if (!showModal) return;
     
     try {
-      const res = await fetch(`${process.env.VITE_API_URL}/api/network/request/${showModal.userId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/network/request/${showModal.userId}`, {
         method: "POST",
         headers: { 
           'Content-Type': 'application/json',

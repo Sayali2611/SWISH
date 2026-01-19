@@ -312,7 +312,7 @@ function Profile() {
   const fetchAllUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${process.env.VITE_API_URL}/api/users', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -327,7 +327,7 @@ function Profile() {
   const handleLikePost = async (postId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -359,7 +359,7 @@ function Profile() {
   const handleAddCommentFromModal = async (postId, commentText) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comment`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -397,7 +397,7 @@ function Profile() {
   const handleEditCommentFromModal = async (postId, commentId, text) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -437,7 +437,7 @@ function Profile() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -471,7 +471,7 @@ function Profile() {
   const handleLikeCommentFromModal = async (postId, commentId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}/like`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -503,7 +503,7 @@ function Profile() {
   const fetchNotificationCount = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch("${process.env.VITE_API_URL}/api/notifications/unread/count", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/unread/count`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
@@ -516,7 +516,7 @@ function Profile() {
   const fetchNetworkStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch("${process.env.VITE_API_URL}/api/network/stats", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
@@ -531,7 +531,7 @@ function Profile() {
   const fetchUserConnections = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch("${process.env.VITE_API_URL}/api/network/connections", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/connections`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
@@ -548,7 +548,7 @@ function Profile() {
       setLoadingPosts(true);
       const token = localStorage.getItem('token');
       const userId = JSON.parse(localStorage.getItem('user')).id;
-      const response = await fetch(`${process.env.VITE_API_URL}/api/users/${userId}/posts`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}/posts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -574,7 +574,7 @@ function Profile() {
       setLoadingActivity(true);
       const token = localStorage.getItem('token');
       const userId = JSON.parse(localStorage.getItem('user')).id;
-      const response = await fetch(`${process.env.VITE_API_URL}/api/users/${userId}/activity`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}/activity`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -655,7 +655,7 @@ function Profile() {
       const formDataToSend = new FormData();
       formDataToSend.append('profilePhoto', file);
       
-      const response = await axios.post('${process.env.VITE_API_URL}/api/auth/upload-photo', formDataToSend, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/upload-photo`, formDataToSend, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -710,7 +710,7 @@ function Profile() {
         isPrivate: formData.isPrivate
       };
 
-      const response = await fetch('${process.env.VITE_API_URL}/api/auth/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -876,7 +876,7 @@ const renderPollCard = (poll, postId) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${postId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -947,7 +947,7 @@ const handleSaveEdit = async () => {
     // Note: Media editing would require file uploads
     // For now, we'll keep it simple - you can extend this later
 
-    const response = await fetch(`${process.env.VITE_API_URL}/api/posts/${editingPost._id}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${editingPost._id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
