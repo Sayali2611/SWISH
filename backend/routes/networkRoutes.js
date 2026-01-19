@@ -24,4 +24,7 @@ router.get("/outgoing", auth, networkController.getOutgoingRequests);
 // Connections
 router.get("/connections", auth, networkController.getConnections);
 
+// Add this line to networkRoutes.js
+router.get("/status/:userId", auth, networkController.getConnectionStatus);
+
 module.exports = router;

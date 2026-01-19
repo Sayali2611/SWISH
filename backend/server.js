@@ -3207,37 +3207,118 @@ app.get("/api/users/:userId", auth, async (req, res) => {
   }
 });
 
-// Get user's posts for profile page
+// Get user's posts for profile page WITH CONNECTION CHECK
 app.get("/api/users/:userId/posts", auth, async (req, res) => {
   try {
     const { userId } = req.params;
+    const currentUserId = req.user.userId;
 
     // Validate userId is a valid ObjectId
     if (!ObjectId.isValid(userId)) {
       return res.status(400).json({ message: 'Invalid user ID format' });
     }
 
+    // Don't need connection check if viewing own profile
+    if (currentUserId === userId) {
+      const posts = await db.collection('posts')
+        .find({ userId: new ObjectId(userId) })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .toArray();
+
+      // Get user data for each post
+      const user = await db.collection('users').findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { name: 1, profilePhoto: 1, role: 1, department: 1 } }
+      );
+
+      const postsWithUser = posts.map(post => ({
+        ...post,
+        shares: Array.isArray(post.shares) ? post.shares : [],
+        user: {
+          id: user?._id,
+          name: user?.name || "Unknown User",
+          profilePhoto: user?.profilePhoto,
+          role: user?.role,
+          department: user?.department
+        }
+      }));
+
+      return res.json(postsWithUser);
+    }
+
+    // For viewing other users' profiles: CHECK CONNECTION STATUS
+    const currentUser = await db.collection('users').findOne(
+      { _id: new ObjectId(currentUserId) },
+      { projection: { connections: 1, sentRequests: 1, receivedRequests: 1 } }
+    );
+
+    const targetUser = await db.collection('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { isPrivate: 1, name: 1, profilePhoto: 1, role: 1, department: 1 } }
+    );
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+// To this:
+const isConnected = (currentUser?.connections || []).some(connId => 
+  connId.toString() === userId
+);
+    // If target user is private AND not connected, deny access
+    if (targetUser.isPrivate && !isConnected) {
+      return res.status(403).json({ 
+        message: 'Cannot view posts. User is private or not connected.',
+        isPrivate: true,
+        isConnected: false
+      });
+    }
+
+    // If connected or public user, fetch posts
     const posts = await db.collection('posts')
       .find({ userId: new ObjectId(userId) })
       .sort({ createdAt: -1 })
       .limit(20)
       .toArray();
 
-    // Get user data for each post
-    const user = await db.collection('users').findOne(
-      { _id: new ObjectId(userId) },
-      { projection: { name: 1, profilePhoto: 1, role: 1, department: 1 } }
-    );
+    // Also get posts that were shared with current user by this user
+    const sharedPosts = await db.collection('posts')
+      .find({
+        userId: new ObjectId(userId),
+        shares: {
+          $elemMatch: {
+            sharedWith: { $in: [currentUserId] }
+          }
+        }
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
 
-    const postsWithUser = posts.map(post => ({
+    // Combine and remove duplicates
+    const allPosts = [...posts, ...sharedPosts];
+    const uniquePosts = [];
+    const seenPostIds = new Set();
+
+    for (const post of allPosts) {
+      const postId = post._id.toString();
+      if (!seenPostIds.has(postId)) {
+        seenPostIds.add(postId);
+        uniquePosts.push(post);
+      }
+    }
+
+    const postsWithUser = uniquePosts.map(post => ({
       ...post,
       shares: Array.isArray(post.shares) ? post.shares : [],
+      // Check if this specific post was shared with current user
+      wasSharedWithMe: Array.isArray(post.shares) && 
+        post.shares.some(share => share.sharedWith && share.sharedWith.includes(currentUserId)),
       user: {
-        id: user?._id,
-        name: user?.name || "Unknown User",
-        profilePhoto: user?.profilePhoto,
-        role: user?.role,
-        department: user?.department
+        id: targetUser._id,
+        name: targetUser.name || "Unknown User",
+        profilePhoto: targetUser.profilePhoto,
+        role: targetUser.role,
+        department: targetUser.department
       }
     }));
 

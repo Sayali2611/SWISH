@@ -451,28 +451,51 @@ const ProfilePage = () => {
   const [reportReason, setReportReason] = useState("");
   const [allUsers, setAllUsers] = useState([]);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (!token || !storedUser) {
-      navigate('/');
-      return;
-    }
+useEffect(() => {
+  const token = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
+  
+  if (!token || !storedUser) {
+    navigate('/');
+    return;
+  }
 
-    const parsedUser = JSON.parse(storedUser);
-    setCurrentUser(parsedUser);
-    
-    if (userId === parsedUser.id) {
-      navigate('/profile');
-      return;
+  const parsedUser = JSON.parse(storedUser);
+  setCurrentUser(parsedUser);
+  
+  if (userId === parsedUser.id) {
+    navigate('/profile');
+    return;
+  }
+  
+  fetchUserProfile();
+  fetchConnectionStatus(); // Fetch connection status FIRST
+  
+  // Wait a bit for connection status to load before fetching posts
+  setTimeout(() => {
+    if (shouldShowPosts()) {
+      fetchUserPosts();
+    } else {
+      setPosts([]); // Clear posts if not allowed
     }
+  }, 100);
+  
+  fetchAllUsers();
+}, [userId, navigate]);
+
+useEffect(() => {
+  if (connectionStatus && user) {
+    console.log('🔄 Connection status changed:', connectionStatus);
+    console.log('👤 User isPrivate:', user.isPrivate);
+    console.log('✅ Should show posts?', shouldShowPosts());
     
-    fetchUserProfile();
-    fetchUserPosts();
-    fetchConnectionStatus();
-    fetchAllUsers();
-  }, [userId, navigate]);
+    if (shouldShowPosts()) {
+      fetchUserPosts();
+    } else {
+      setPosts([]); // Clear posts if not allowed anymore
+    }
+  }
+}, [connectionStatus, user]);
 
   // ==================== API CALLS ====================
   const fetchUserProfile = async () => {
@@ -497,28 +520,45 @@ const ProfilePage = () => {
     }
   };
 
-  const fetchUserPosts = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/posts`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+const fetchUserPosts = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('📡 Fetching posts for user:', userId);
+    console.log('🔗 Connection status:', connectionStatus); // Add this
+    
+    const response = await fetch(`http://localhost:5000/api/users/${userId}/posts`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Filter to ensure we only get this user's posts
-        const filteredPosts = data.filter(post => 
-          post.user && (post.user._id === userId || post.user.id === userId)
-        );
-        setPosts(filteredPosts);
-        
-        // Fetch share counts for each post
-        filteredPosts.forEach(post => fetchShareCount(post._id));
-      }
-    } catch (error) {
-      console.error('Failed to fetch user posts:', error);
+    console.log('📊 Response status:', response.status); // Add this
+    console.log('📊 Response ok:', response.ok); // Add this
+    
+    if (response.status === 403) {
+      console.log('❌ Access denied - not connected or private account');
+      setPosts([]);
+      return;
     }
-  };
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Posts fetched:', data.length, 'posts');
+      // Filter to ensure we only get this user's posts
+      const filteredPosts = data.filter(post => 
+        post.user && (post.user._id === userId || post.user.id === userId)
+      );
+      setPosts(filteredPosts);
+      
+      // Fetch share counts for each post
+      filteredPosts.forEach(post => fetchShareCount(post._id));
+    } else {
+      console.log('❌ Response not OK');
+      setPosts([]);
+    }
+  } catch (error) {
+    console.error('Failed to fetch user posts:', error);
+    setPosts([]);
+  }
+};
 
   const fetchConnectionStatus = async () => {
     try {
@@ -1117,16 +1157,23 @@ const ProfilePage = () => {
     });
   };
 
-  // Check if posts should be visible
-  const shouldShowPosts = () => {
-    if (!user) return false;
-    
-    if (user.isPrivate && connectionStatus !== 'connected') {
-      return false;
-    }
-    
+// Check if posts should be visible - STRICTER VERSION
+const shouldShowPosts = () => {
+  if (!user) return false;
+  
+  // Always show your own posts
+  if (currentUser && currentUser.id === userId) {
     return true;
-  };
+  }
+  
+  // For other users: Must be connected OR user must be public
+  if (user.isPrivate) {
+    return connectionStatus === 'connected';
+  }
+  
+  // Public users: anyone can see their posts
+  return true;
+};
 
   const renderMedia = (media) => {
     if (!media || media.length === 0) return null;

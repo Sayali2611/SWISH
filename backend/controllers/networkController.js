@@ -153,3 +153,51 @@ exports.getConnections = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+// ---------------------------------------------------------
+// Get connection status with a user
+// ---------------------------------------------------------
+exports.getConnectionStatus = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const targetUserId = req.params.userId;
+
+    if (currentUserId === targetUserId) {
+      return res.json({
+        status: "self",
+        message: "This is your own profile"
+      });
+    }
+
+    const currentUser = await User.findById(currentUserId);
+
+    // Check connection status
+    const isConnected = currentUser.connections.includes(targetUserId);
+    const hasSentRequest = currentUser.sentRequests.includes(targetUserId);
+    const hasReceivedRequest = currentUser.receivedRequests.includes(targetUserId);
+
+    let status = "none";
+    let message = "";
+
+    if (isConnected) {
+      status = "connected";
+      message = "You are connected with this user";
+    } else if (hasSentRequest) {
+      status = "request_sent";
+      message = "Connection request sent - pending";
+    } else if (hasReceivedRequest) {
+      status = "request_received";
+      message = "You have a connection request from this user";
+    } else {
+      status = "not_connected";
+      message = "Not connected";
+    }
+
+    res.json({
+      status,
+      message,
+      canSendRequest: !isConnected && !hasSentRequest && !hasReceivedRequest
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
