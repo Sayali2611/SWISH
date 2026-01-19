@@ -29,10 +29,7 @@ global.db = null;
 
 // Middleware
 app.use(express.json());
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://Swish-sigce.vercel.app'],
-  credentials: true
-}));
+app.use(cors({ origin: "https://swish-mauve.vercel.app", credentials: true }));
 
 // Cloudinary Configuration
 cloudinary.config({
