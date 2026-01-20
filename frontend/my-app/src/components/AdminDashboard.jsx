@@ -190,12 +190,13 @@ useEffect(() => {
   };
 
   const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/search`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+  setLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    // ADD limit=1000 parameter
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/search?limit=1000`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
       
       if (response.status === 403) {
         showToast("Admin access required", "error");
@@ -1566,7 +1567,7 @@ const handleUserActionCompleted = async (action) => {
                 </table>
                 <div className="table-footer">
                   <div className="results-count">
-                    Showing {filteredUsers.length} of {users.length} users
+                    Showing {filteredUsers.length} of {users.length} users (Total: {stats?.totalUsers || 0})
                   </div>
                   <div className="table-actions">
                     <button className="export-btn" onClick={() => {

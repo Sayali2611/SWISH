@@ -3047,7 +3047,6 @@ app.get("/api/users/search", auth, async (req, res) => {
         skills: 1,
         year: 1
       })
-      .limit(20)
       .toArray();
 
     console.log(`✅ Found ${users.length} users`);
@@ -5515,9 +5514,10 @@ app.get("/api/admin/users/search", auth, requireAdmin, async (req, res) => {
       })
     );
     
-    res.json({
+       res.json({
       success: true,
       users: usersWithStats,
+      totalUsers: totalUsers, // ADD THIS LINE
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
