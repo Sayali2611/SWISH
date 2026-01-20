@@ -607,7 +607,7 @@ function Feed() {
   const fetchUserWithRestriction = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -856,7 +856,7 @@ function Feed() {
         }))}`;
       }
       
-      const response = await fetch(`http://localhost:5000/api/posts${queryParams}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts${queryParams}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -900,7 +900,7 @@ function Feed() {
   const fetchAllUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -929,7 +929,7 @@ function Feed() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:5000/api/network/connections', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/network/connections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -944,7 +944,7 @@ function Feed() {
       
       // Fetch post share count
       try {
-        const shareResponse = await fetch(`http://localhost:5000/api/posts/${post._id}/shares`, {
+        const shareResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${post._id}/shares`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -1010,7 +1010,7 @@ function Feed() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/posts/${postToShare._id}/share`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postToShare._id}/share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1099,7 +1099,7 @@ function Feed() {
 
       const fetchInitialCount = async () => {
         try {
-          const response = await fetch("http://localhost:5000/api/notifications/unread/count", {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/unread/count`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const data = await response.json();
@@ -1244,12 +1244,12 @@ function Feed() {
       if (handleRestrictedAction()) return;
     }
 
-    let postData = { content: newPost };
+      let postData = { content: newPost };
 
-    if (postType === 'text' && !newPost.trim() && selectedFiles.length === 0) {
-      setError('Post content or media is required for text posts');
-      return;
-    }
+       if (postType === 'text' && !newPost.trim() && selectedFiles.length === 0) {
+    setError('Post content or media is required for text posts');
+    return;
+  }
     
     if (postType === 'event') {
       if (!eventData.title || !eventData.date || !eventData.time || !eventData.location) {
@@ -1321,7 +1321,7 @@ function Feed() {
           formData.append('media', file);
         });
 
-        response = await fetch('http://localhost:5000/api/posts/upload', {
+        response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/upload`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -1329,7 +1329,7 @@ function Feed() {
 
         result = await response.json();
       } else {
-        response = await fetch('http://localhost:5000/api/posts', {
+        response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1395,7 +1395,7 @@ function Feed() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/rsvp`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/rsvp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1434,7 +1434,7 @@ function Feed() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/vote`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1471,7 +1471,7 @@ function Feed() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1505,7 +1505,7 @@ function Feed() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comment`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1556,7 +1556,7 @@ function Feed() {
   const handleEditComment = async (postId, commentId, text) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1593,7 +1593,7 @@ function Feed() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1630,7 +1630,7 @@ function Feed() {
   const handleLikeComment = async (postId, commentId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${commentId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comments/${commentId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1668,7 +1668,7 @@ function Feed() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1704,7 +1704,7 @@ function Feed() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/posts/${selectedPostId}/report`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${selectedPostId}/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1799,7 +1799,7 @@ function Feed() {
 
     if (notifCount > 0) {
       try {
-        await fetch("http://localhost:5000/api/notifications/read-all", {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/notifications/read-all`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -2234,62 +2234,61 @@ function Feed() {
               </div>
             )}
             
-            {/* Poll Creation Form */}
             {postType === 'poll' && (
-              <div className="poll-form">
-                <div className="form-group">
-                  <label>Poll Question *</label>
-                  <textarea 
-                    placeholder="Ask a question..."
-                    value={pollData.question}
-                    onChange={(e) => handlePollChange('question', e.target.value)}
-                    disabled={isUploading}
-                    rows={2}
-                    style={{
-                      whiteSpace: 'pre-wrap',
-                      overflowWrap: 'break-word',
-                      resize: 'vertical'
-                    }}
-                  />
-                </div>
-                
-                <div className="poll-options">
-                  <label>Options (minimum 2) *</label>
-                  {pollData.options.map((option, index) => (
-                    <div key={index} className="poll-option">
-                      <input 
-                        type="text" 
-                        placeholder={`Option ${index + 1}`}
-                        value={option}
-                        onChange={(e) => handlePollOptionChange(index, e.target.value)}
-                        disabled={isUploading}
-                      />
-                      {pollData.options.length > 2 && (
-                        <button 
-                          type="button" 
-                          className="remove-option-btn"
-                          onClick={() => removePollOption(index)}
-                          disabled={isUploading}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {pollData.options.length < 6 && (
-                    <button 
-                      type="button" 
-                      className="add-option-btn"
-                      onClick={addPollOption}
-                      disabled={isUploading}
-                    >
-                      + Add Option
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+  <div className="poll-form">
+    <div className="form-group">
+      <label>Poll Question *</label>
+      <textarea 
+        placeholder="Ask a question..."
+        value={pollData.question}
+        onChange={(e) => handlePollChange('question', e.target.value)}
+        disabled={isUploading}
+        rows={2}
+        style={{
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'break-word',
+          resize: 'vertical'
+        }}
+      />
+    </div>
+    
+    <div className="poll-options">
+      <label>Options (minimum 2) *</label>
+      {pollData.options.map((option, index) => (
+        <div key={index} className="poll-option">
+          <input 
+            type="text" 
+            placeholder={`Option ${index + 1}`}
+            value={option}
+            onChange={(e) => handlePollOptionChange(index, e.target.value)}
+            disabled={isUploading}
+          />
+          {pollData.options.length > 2 && (
+            <button 
+              type="button" 
+              className="remove-option-btn"
+              onClick={() => removePollOption(index)}
+              disabled={isUploading}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      ))}
+      
+      {pollData.options.length < 6 && (
+        <button 
+          type="button" 
+          className="add-option-btn"
+          onClick={addPollOption}
+          disabled={isUploading}
+        >
+          + Add Option
+        </button>
+      )}
+    </div>
+  </div>
+)}
             
             {/* Media Upload Section (only for text posts) */}
             {postType === 'text' && showMediaUploader && (
